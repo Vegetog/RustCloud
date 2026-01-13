@@ -1,0 +1,20 @@
+[package]
+name = "rustcloud-database"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Database models and repositories for RustCloud"
+
+[dependencies]
+rustcloud-core = { workspace = true }
+sea-orm = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tokio = { workspace = true }

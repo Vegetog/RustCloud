@@ -1,0 +1,20 @@
+[package]
+name = "rustcloud-storage"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Storage abstraction layer for RustCloud"
+
+[dependencies]
+rustcloud-core = { workspace = true }
+rustcloud-crypto = { workspace = true }
+aws-sdk-s3 = { workspace = true }
+aws-config = { workspace = true }
+tokio = { workspace = true }
+async-trait = "0.1"
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }

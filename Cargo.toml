@@ -1,0 +1,82 @@
+[workspace]
+members = [
+    "crates/rustcloud-core",
+    "crates/rustcloud-crypto",
+    "crates/rustcloud-storage",
+    "crates/rustcloud-auth",
+    "crates/rustcloud-database",
+    "crates/rustcloud-api",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["RustCloud Team"]
+license = "MIT"
+
+[workspace.dependencies]
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# Web Framework
+axum = { version = "0.7", features = ["macros"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tower = { version = "0.5", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-gzip", "limit"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Database
+sea-orm = { version = "1", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sea-orm-migration = { version = "1", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
+
+# Redis
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+
+# Object Storage
+aws-sdk-s3 = "1"
+aws-config = "1"
+
+# Cryptography
+argon2 = "0.5"
+aes-gcm = "0.10"
+rsa = { version = "0.9", features = ["sha2"] }
+sha2 = "0.10"
+rand = "0.8"
+zeroize = { version = "1", features = ["derive"] }
+
+# JWT
+jsonwebtoken = "9"
+
+# Utilities
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+hex = "0.4"
+
+# Error Handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Configuration
+dotenvy = "0.15"
+
+# Validation
+validator = { version = "0.19", features = ["derive"] }
+
+# Testing
+tokio-test = "0.4"
+
+# Internal crates
+rustcloud-core = { path = "crates/rustcloud-core" }
+rustcloud-crypto = { path = "crates/rustcloud-crypto" }
+rustcloud-storage = { path = "crates/rustcloud-storage" }
+rustcloud-auth = { path = "crates/rustcloud-auth" }
+rustcloud-database = { path = "crates/rustcloud-database" }

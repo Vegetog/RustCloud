@@ -1,0 +1,23 @@
+[package]
+name = "rustcloud-auth"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Authentication and authorization for RustCloud"
+
+[dependencies]
+rustcloud-core = { workspace = true }
+rustcloud-crypto = { workspace = true }
+jsonwebtoken = { workspace = true }
+redis = { workspace = true }
+argon2 = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+rand = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tokio = { workspace = true }
