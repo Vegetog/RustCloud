@@ -2,4 +2,12 @@
 //!
 //! File storage abstraction with local and MinIO backends.
 
-// TODO: Implement in Phase 4
+mod local;
+mod minio;
+mod traits;
+mod types;
+
+pub use local::LocalStorage;
+pub use minio::MinioStorage;
+pub use traits::Storage;
+pub use types::{StorageConfig, StorageMetadata, StorageObject};
