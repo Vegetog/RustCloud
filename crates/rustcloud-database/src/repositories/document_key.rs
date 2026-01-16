@@ -1,5 +1,7 @@
 //! Document key repository implementation
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
@@ -42,12 +44,12 @@ pub trait DocumentKeyRepositoryTrait: Send + Sync {
 
 /// Document key repository implementation
 pub struct DocumentKeyRepository {
-    db: DatabaseConnection,
+    db: Arc<DatabaseConnection>,
 }
 
 impl DocumentKeyRepository {
     /// Create a new document key repository
-    pub fn new(db: DatabaseConnection) -> Self {
+    pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }
 }
@@ -66,7 +68,7 @@ impl DocumentKeyRepositoryTrait for DocumentKeyRepository {
             created_at: Set(Utc::now()),
         };
 
-        let result = model.insert(&self.db).await?;
+        let result = model.insert(&*self.db).await?;
         Ok(result)
     }
 
@@ -78,7 +80,7 @@ impl DocumentKeyRepositoryTrait for DocumentKeyRepository {
         let result = DocumentKey::find()
             .filter(document_key::Column::DocumentId.eq(doc_id))
             .filter(document_key::Column::UserId.eq(user_id))
-            .one(&self.db)
+            .one(&*self.db)
             .await?;
         Ok(result)
     }
@@ -86,7 +88,7 @@ impl DocumentKeyRepositoryTrait for DocumentKeyRepository {
     async fn find_by_document(&self, doc_id: Uuid) -> DbResult<Vec<DocumentKeyModel>> {
         let result = DocumentKey::find()
             .filter(document_key::Column::DocumentId.eq(doc_id))
-            .all(&self.db)
+            .all(&*self.db)
             .await?;
         Ok(result)
     }
@@ -94,25 +96,25 @@ impl DocumentKeyRepositoryTrait for DocumentKeyRepository {
     async fn find_by_user(&self, user_id: Uuid) -> DbResult<Vec<DocumentKeyModel>> {
         let result = DocumentKey::find()
             .filter(document_key::Column::UserId.eq(user_id))
-            .all(&self.db)
+            .all(&*self.db)
             .await?;
         Ok(result)
     }
 
     async fn update_permission(&self, id: Uuid, level: PermissionLevel) -> DbResult<()> {
         let key = DocumentKey::find_by_id(id)
-            .one(&self.db)
+            .one(&*self.db)
             .await?
             .ok_or(DatabaseError::NotFound)?;
 
         let mut model: document_key::ActiveModel = key.into();
         model.permission_level = Set(level);
-        model.update(&self.db).await?;
+        model.update(&*self.db).await?;
         Ok(())
     }
 
     async fn delete(&self, id: Uuid) -> DbResult<()> {
-        let result = DocumentKey::delete_by_id(id).exec(&self.db).await?;
+        let result = DocumentKey::delete_by_id(id).exec(&*self.db).await?;
         if result.rows_affected == 0 {
             return Err(DatabaseError::NotFound);
         }
@@ -122,7 +124,7 @@ impl DocumentKeyRepositoryTrait for DocumentKeyRepository {
     async fn delete_by_document(&self, doc_id: Uuid) -> DbResult<u64> {
         let result = DocumentKey::delete_many()
             .filter(document_key::Column::DocumentId.eq(doc_id))
-            .exec(&self.db)
+            .exec(&*self.db)
             .await?;
         Ok(result.rows_affected)
     }
@@ -154,7 +156,7 @@ mod tests {
             .append_query_results([[key.clone()]])
             .into_connection();
 
-        let repo = DocumentKeyRepository::new(db);
+        let repo = DocumentKeyRepository::new(Arc::new(db));
         let result = repo.find_by_document_and_user(doc_id, user_id).await.unwrap();
 
         assert!(result.is_some());
@@ -179,7 +181,7 @@ mod tests {
             .append_query_results([vec![key1.clone(), key2]])
             .into_connection();
 
-        let repo = DocumentKeyRepository::new(db);
+        let repo = DocumentKeyRepository::new(Arc::new(db));
         let result = repo.find_by_document(key1.document_id).await.unwrap();
 
         assert_eq!(result.len(), 2);
@@ -194,7 +196,7 @@ mod tests {
             }])
             .into_connection();
 
-        let repo = DocumentKeyRepository::new(db);
+        let repo = DocumentKeyRepository::new(Arc::new(db));
         let result = repo.delete(Uuid::new_v4()).await;
 
         assert!(result.is_ok());
@@ -209,7 +211,7 @@ mod tests {
             }])
             .into_connection();
 
-        let repo = DocumentKeyRepository::new(db);
+        let repo = DocumentKeyRepository::new(Arc::new(db));
         let result = repo.delete_by_document(Uuid::new_v4()).await.unwrap();
 
         assert_eq!(result, 3);

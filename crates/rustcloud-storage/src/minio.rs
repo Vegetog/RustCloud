@@ -10,7 +10,7 @@ use aws_sdk_s3::{
 use chrono::Utc;
 use rustcloud_core::error::{Error, Result};
 use sha2::{Digest, Sha256};
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use crate::traits::Storage;
 use crate::types::{MinioStorageConfig, StorageMetadata, StorageObject};

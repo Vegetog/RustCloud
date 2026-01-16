@@ -1,5 +1,7 @@
 //! Document repository implementation
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{
@@ -48,12 +50,12 @@ pub trait DocumentRepositoryTrait: Send + Sync {
 
 /// Document repository implementation
 pub struct DocumentRepository {
-    db: DatabaseConnection,
+    db: Arc<DatabaseConnection>,
 }
 
 impl DocumentRepository {
     /// Create a new document repository
-    pub fn new(db: DatabaseConnection) -> Self {
+    pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }
 
@@ -97,12 +99,12 @@ impl DocumentRepositoryTrait for DocumentRepository {
             updated_at: Set(now),
         };
 
-        let result = model.insert(&self.db).await?;
+        let result = model.insert(&*self.db).await?;
         Ok(result)
     }
 
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<DocumentModel>> {
-        let result = Document::find_by_id(id).one(&self.db).await?;
+        let result = Document::find_by_id(id).one(&*self.db).await?;
         Ok(result)
     }
 
@@ -116,13 +118,13 @@ impl DocumentRepositoryTrait for DocumentRepository {
         let query = Self::apply_sort(query, &params.sort_by, &params.sort_order);
 
         // Get total count
-        let total = query.clone().count(&self.db).await?;
+        let total = query.clone().count(&*self.db).await?;
 
         // Apply pagination
         let items = query
             .offset(params.offset())
             .limit(params.limit())
-            .all(&self.db)
+            .all(&*self.db)
             .await?;
 
         Ok(Page::new(items, total, params.page, params.page_size))
@@ -140,12 +142,12 @@ impl DocumentRepositoryTrait for DocumentRepository {
 
         let query = Self::apply_sort(query, &params.sort_by, &params.sort_order);
 
-        let total = query.clone().count(&self.db).await?;
+        let total = query.clone().count(&*self.db).await?;
 
         let items = query
             .offset(params.offset())
             .limit(params.limit())
-            .all(&self.db)
+            .all(&*self.db)
             .await?;
 
         Ok(Page::new(items, total, params.page, params.page_size))
@@ -153,7 +155,7 @@ impl DocumentRepositoryTrait for DocumentRepository {
 
     async fn update(&self, id: Uuid, data: UpdateDocument) -> DbResult<DocumentModel> {
         let doc = Document::find_by_id(id)
-            .one(&self.db)
+            .one(&*self.db)
             .await?
             .ok_or(DatabaseError::NotFound)?;
 
@@ -176,12 +178,12 @@ impl DocumentRepositoryTrait for DocumentRepository {
         }
         model.updated_at = Set(Utc::now());
 
-        let result = model.update(&self.db).await?;
+        let result = model.update(&*self.db).await?;
         Ok(result)
     }
 
     async fn delete(&self, id: Uuid) -> DbResult<()> {
-        let result = Document::delete_by_id(id).exec(&self.db).await?;
+        let result = Document::delete_by_id(id).exec(&*self.db).await?;
         if result.rows_affected == 0 {
             return Err(DatabaseError::NotFound);
         }
@@ -218,7 +220,7 @@ mod tests {
             .append_query_results([[doc]])
             .into_connection();
 
-        let repo = DocumentRepository::new(db);
+        let repo = DocumentRepository::new(Arc::new(db));
         let result = repo.find_by_id(doc_id).await.unwrap();
 
         assert!(result.is_some());
@@ -231,7 +233,7 @@ mod tests {
             .append_query_results([Vec::<DocumentModel>::new()])
             .into_connection();
 
-        let repo = DocumentRepository::new(db);
+        let repo = DocumentRepository::new(Arc::new(db));
         let result = repo.find_by_id(Uuid::new_v4()).await.unwrap();
 
         assert!(result.is_none());
@@ -246,7 +248,7 @@ mod tests {
             }])
             .into_connection();
 
-        let repo = DocumentRepository::new(db);
+        let repo = DocumentRepository::new(Arc::new(db));
         let result = repo.delete(Uuid::new_v4()).await;
 
         assert!(result.is_ok());
@@ -261,7 +263,7 @@ mod tests {
             }])
             .into_connection();
 
-        let repo = DocumentRepository::new(db);
+        let repo = DocumentRepository::new(Arc::new(db));
         let result = repo.delete(Uuid::new_v4()).await;
 
         assert!(matches!(result, Err(DatabaseError::NotFound)));

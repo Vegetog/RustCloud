@@ -10,4 +10,4 @@ mod types;
 pub use local::LocalStorage;
 pub use minio::MinioStorage;
 pub use traits::Storage;
-pub use types::{StorageConfig, StorageMetadata, StorageObject};
+pub use types::{LocalStorageConfig, MinioStorageConfig, StorageConfig, StorageMetadata, StorageObject};

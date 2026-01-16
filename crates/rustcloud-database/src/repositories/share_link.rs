@@ -1,5 +1,7 @@
 //! Share link repository implementation
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
@@ -39,12 +41,12 @@ pub trait ShareLinkRepositoryTrait: Send + Sync {
 
 /// Share link repository implementation
 pub struct ShareLinkRepository {
-    db: DatabaseConnection,
+    db: Arc<DatabaseConnection>,
 }
 
 impl ShareLinkRepository {
     /// Create a new share link repository
-    pub fn new(db: DatabaseConnection) -> Self {
+    pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }
 }
@@ -67,27 +69,27 @@ impl ShareLinkRepositoryTrait for ShareLinkRepository {
             created_at: Set(Utc::now()),
         };
 
-        let result = model.insert(&self.db).await?;
+        let result = model.insert(&*self.db).await?;
         Ok(result)
     }
 
     async fn find_by_token(&self, token: &str) -> DbResult<Option<ShareLinkModel>> {
         let result = ShareLink::find()
             .filter(share_link::Column::AccessToken.eq(token))
-            .one(&self.db)
+            .one(&*self.db)
             .await?;
         Ok(result)
     }
 
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<ShareLinkModel>> {
-        let result = ShareLink::find_by_id(id).one(&self.db).await?;
+        let result = ShareLink::find_by_id(id).one(&*self.db).await?;
         Ok(result)
     }
 
     async fn find_by_document(&self, doc_id: Uuid) -> DbResult<Vec<ShareLinkModel>> {
         let result = ShareLink::find()
             .filter(share_link::Column::DocumentId.eq(doc_id))
-            .all(&self.db)
+            .all(&*self.db)
             .await?;
         Ok(result)
     }
@@ -95,25 +97,25 @@ impl ShareLinkRepositoryTrait for ShareLinkRepository {
     async fn find_by_creator(&self, creator_id: Uuid) -> DbResult<Vec<ShareLinkModel>> {
         let result = ShareLink::find()
             .filter(share_link::Column::CreatorId.eq(creator_id))
-            .all(&self.db)
+            .all(&*self.db)
             .await?;
         Ok(result)
     }
 
     async fn increment_access_count(&self, id: Uuid) -> DbResult<()> {
         let link = ShareLink::find_by_id(id)
-            .one(&self.db)
+            .one(&*self.db)
             .await?
             .ok_or(DatabaseError::NotFound)?;
 
         let mut model: share_link::ActiveModel = link.clone().into();
         model.access_count = Set(link.access_count + 1);
-        model.update(&self.db).await?;
+        model.update(&*self.db).await?;
         Ok(())
     }
 
     async fn delete(&self, id: Uuid) -> DbResult<()> {
-        let result = ShareLink::delete_by_id(id).exec(&self.db).await?;
+        let result = ShareLink::delete_by_id(id).exec(&*self.db).await?;
         if result.rows_affected == 0 {
             return Err(DatabaseError::NotFound);
         }
@@ -125,7 +127,7 @@ impl ShareLinkRepositoryTrait for ShareLinkRepository {
         let result = ShareLink::delete_many()
             .filter(share_link::Column::ExpiresAt.is_not_null())
             .filter(share_link::Column::ExpiresAt.lt(now))
-            .exec(&self.db)
+            .exec(&*self.db)
             .await?;
         Ok(result.rows_affected)
     }
@@ -159,7 +161,7 @@ mod tests {
             .append_query_results([[link.clone()]])
             .into_connection();
 
-        let repo = ShareLinkRepository::new(db);
+        let repo = ShareLinkRepository::new(Arc::new(db));
         let result = repo.find_by_token("token123").await.unwrap();
 
         assert!(result.is_some());
@@ -172,7 +174,7 @@ mod tests {
             .append_query_results([Vec::<ShareLinkModel>::new()])
             .into_connection();
 
-        let repo = ShareLinkRepository::new(db);
+        let repo = ShareLinkRepository::new(Arc::new(db));
         let result = repo.find_by_token("nonexistent").await.unwrap();
 
         assert!(result.is_none());
@@ -198,7 +200,7 @@ mod tests {
             .append_query_results([vec![link1.clone(), link2]])
             .into_connection();
 
-        let repo = ShareLinkRepository::new(db);
+        let repo = ShareLinkRepository::new(Arc::new(db));
         let result = repo.find_by_document(link1.document_id).await.unwrap();
 
         assert_eq!(result.len(), 2);
@@ -213,7 +215,7 @@ mod tests {
             }])
             .into_connection();
 
-        let repo = ShareLinkRepository::new(db);
+        let repo = ShareLinkRepository::new(Arc::new(db));
         let result = repo.delete(Uuid::new_v4()).await;
 
         assert!(result.is_ok());
@@ -228,7 +230,7 @@ mod tests {
             }])
             .into_connection();
 
-        let repo = ShareLinkRepository::new(db);
+        let repo = ShareLinkRepository::new(Arc::new(db));
         let result = repo.delete_expired().await.unwrap();
 
         assert_eq!(result, 5);

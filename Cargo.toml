@@ -5,6 +5,7 @@ members = [
     "crates/rustcloud-storage",
     "crates/rustcloud-auth",
     "crates/rustcloud-database",
+    "crates/rustcloud-database/migration",
     "crates/rustcloud-api",
 ]
 resolver = "2"
@@ -20,7 +21,7 @@ license = "MIT"
 tokio = { version = "1", features = ["full"] }
 
 # Web Framework
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "multipart"] }
 axum-extra = { version = "0.9", features = ["typed-header"] }
 tower = { version = "0.5", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "compression-gzip", "limit"] }

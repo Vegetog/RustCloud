@@ -1,5 +1,7 @@
 //! User repository implementation
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
@@ -33,12 +35,12 @@ pub trait UserRepositoryTrait: Send + Sync {
 
 /// User repository implementation
 pub struct UserRepository {
-    db: DatabaseConnection,
+    db: Arc<DatabaseConnection>,
 }
 
 impl UserRepository {
     /// Create a new user repository
-    pub fn new(db: DatabaseConnection) -> Self {
+    pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }
 }
@@ -61,26 +63,26 @@ impl UserRepositoryTrait for UserRepository {
             updated_at: Set(now),
         };
 
-        let result = model.insert(&self.db).await?;
+        let result = model.insert(&*self.db).await?;
         Ok(result)
     }
 
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<UserModel>> {
-        let result = User::find_by_id(id).one(&self.db).await?;
+        let result = User::find_by_id(id).one(&*self.db).await?;
         Ok(result)
     }
 
     async fn find_by_email(&self, email: &str) -> DbResult<Option<UserModel>> {
         let result = User::find()
             .filter(user::Column::Email.eq(email))
-            .one(&self.db)
+            .one(&*self.db)
             .await?;
         Ok(result)
     }
 
     async fn update(&self, id: Uuid, data: UpdateUser) -> DbResult<UserModel> {
         let user = User::find_by_id(id)
-            .one(&self.db)
+            .one(&*self.db)
             .await?
             .ok_or(DatabaseError::NotFound)?;
 
@@ -94,12 +96,12 @@ impl UserRepositoryTrait for UserRepository {
         }
         model.updated_at = Set(Utc::now());
 
-        let result = model.update(&self.db).await?;
+        let result = model.update(&*self.db).await?;
         Ok(result)
     }
 
     async fn delete(&self, id: Uuid) -> DbResult<()> {
-        let result = User::delete_by_id(id).exec(&self.db).await?;
+        let result = User::delete_by_id(id).exec(&*self.db).await?;
         if result.rows_affected == 0 {
             return Err(DatabaseError::NotFound);
         }
@@ -108,7 +110,7 @@ impl UserRepositoryTrait for UserRepository {
 
     async fn update_keys(&self, id: Uuid, keys: UserKeys) -> DbResult<()> {
         let user = User::find_by_id(id)
-            .one(&self.db)
+            .one(&*self.db)
             .await?
             .ok_or(DatabaseError::NotFound)?;
 
@@ -120,7 +122,7 @@ impl UserRepositoryTrait for UserRepository {
         model.private_key_nonce = Set(keys.private_key_nonce);
         model.updated_at = Set(Utc::now());
 
-        model.update(&self.db).await?;
+        model.update(&*self.db).await?;
         Ok(())
     }
 }
@@ -152,7 +154,7 @@ mod tests {
             .append_query_results([[user.clone()]])
             .into_connection();
 
-        let repo = UserRepository::new(db);
+        let repo = UserRepository::new(Arc::new(db));
         let result = repo.find_by_email("test@example.com").await.unwrap();
 
         assert!(result.is_some());
@@ -165,7 +167,7 @@ mod tests {
             .append_query_results([Vec::<UserModel>::new()])
             .into_connection();
 
-        let repo = UserRepository::new(db);
+        let repo = UserRepository::new(Arc::new(db));
         let result = repo.find_by_email("nonexistent@example.com").await.unwrap();
 
         assert!(result.is_none());
@@ -180,7 +182,7 @@ mod tests {
             .append_query_results([[user]])
             .into_connection();
 
-        let repo = UserRepository::new(db);
+        let repo = UserRepository::new(Arc::new(db));
         let result = repo.find_by_id(user_id).await.unwrap();
 
         assert!(result.is_some());
@@ -196,7 +198,7 @@ mod tests {
             }])
             .into_connection();
 
-        let repo = UserRepository::new(db);
+        let repo = UserRepository::new(Arc::new(db));
         let result = repo.delete(Uuid::new_v4()).await;
 
         assert!(result.is_ok());
@@ -211,7 +213,7 @@ mod tests {
             }])
             .into_connection();
 
-        let repo = UserRepository::new(db);
+        let repo = UserRepository::new(Arc::new(db));
         let result = repo.delete(Uuid::new_v4()).await;
 
         assert!(matches!(result, Err(DatabaseError::NotFound)));

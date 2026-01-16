@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
-use tracing::{debug, error};
+use tracing::debug;
 
 use crate::traits::Storage;
 use crate::types::{LocalStorageConfig, StorageMetadata, StorageObject};
