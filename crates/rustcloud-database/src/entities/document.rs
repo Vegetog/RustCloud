@@ -16,6 +16,9 @@ pub struct Model {
     /// Base64-encoded nonce for name encryption
     pub name_nonce: String,
 
+    /// Base64-encoded nonce for content encryption
+    pub content_nonce: String,
+
     /// SHA-256 hash of encrypted content (hex)
     pub content_hash: String,
 

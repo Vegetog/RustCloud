@@ -187,6 +187,7 @@ export class CryptoService {
       encryptedContent,
       encryptedName: this.arrayBufferToBase64(encryptedName),
       nameNonce: this.arrayBufferToBase64(nameNonce.buffer),
+      contentNonce: this.arrayBufferToBase64(contentNonce.buffer),
       contentHash,
       encryptedKey: this.arrayBufferToBase64(encryptedKey),
     };

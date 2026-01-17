@@ -4,6 +4,7 @@ export interface Document {
   id: string;
   encrypted_name: string; // 注意: API返回的是snake_case
   name_nonce: string;
+  content_nonce: string;
   size: number;
   mime_type: string;
   content_hash: string;
@@ -28,6 +29,7 @@ export interface DocumentDetailResponse {
 export interface UploadMetadata {
   encrypted_name: string;
   name_nonce: string;
+  content_nonce: string;
   encrypted_key: string;
   content_hash: string;
   mime_type: string;

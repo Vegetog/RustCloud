@@ -16,6 +16,9 @@ pub struct UploadMetadata {
     #[validate(length(min = 1, message = "Name nonce is required"))]
     pub name_nonce: String,
 
+    #[validate(length(min = 1, message = "Content nonce is required"))]
+    pub content_nonce: String,
+
     #[validate(length(min = 1, message = "Content hash is required"))]
     pub content_hash: String,
 
@@ -56,6 +59,7 @@ pub struct DocumentResponse {
     pub id: Uuid,
     pub encrypted_name: String,
     pub name_nonce: String,
+    pub content_nonce: String,
     pub size: i64,
     pub mime_type: String,
     pub content_hash: String,

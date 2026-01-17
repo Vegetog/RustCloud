@@ -87,6 +87,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       await apiService.uploadDocument(blob, {
         encrypted_name: encrypted.encryptedName,
         name_nonce: encrypted.nameNonce,
+        content_nonce: encrypted.contentNonce,
         encrypted_key: encrypted.encryptedKey,
         content_hash: encrypted.contentHash,
         mime_type: file.type || 'application/octet-stream',
@@ -128,18 +129,24 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       const contentResponse = await apiService.downloadDocument(id);
       const encryptedContent = contentResponse.data;
 
-      // Extract content nonce from document metadata
-      // Note: The backend should return this in the response headers or document detail
-      // For now, we'll assume it's in the detail response
-      // TODO: Verify the actual API response structure
+      // Extract document metadata including content nonce
       const document = detail.document;
+
+      // Check if content_nonce is available (older files might not have it)
+      if (!document.content_nonce || document.content_nonce.trim() === '') {
+        throw new Error(
+          '该文件缺少解密所需的元数据（content_nonce）。' +
+          '这可能是在系统升级前上传的文件。' +
+          '请删除此文件并重新上传。'
+        );
+      }
 
       // Decrypt document
       const decrypted = await crypto.decryptDocument(
         encryptedContent,
         document.encrypted_name,
         document.name_nonce,
-        '', // content_nonce - TODO: get from API response
+        document.content_nonce,
         detail.encrypted_key,
         privateKey
       );
@@ -156,9 +163,29 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error('Failed to download document:', error);
-      set({
-        error: error.response?.data?.message || '文件下载失败',
-      });
+
+      // Handle error message (special handling for arraybuffer responses)
+      let errorMessage = '文件下载失败';
+      if (error.response?.data) {
+        // If responseType was arraybuffer, error.response.data might be ArrayBuffer
+        if (error.response.data instanceof ArrayBuffer) {
+          try {
+            const text = new TextDecoder().decode(error.response.data);
+            const json = JSON.parse(text);
+            errorMessage = json.error?.message || json.message || errorMessage;
+          } catch {
+            // Failed to parse, use default message
+          }
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error?.message) {
+          errorMessage = error.response.data.error.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      set({ error: errorMessage });
       throw error;
     }
   },

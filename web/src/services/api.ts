@@ -21,6 +21,9 @@ class ApiService {
       const token = sessionStorage.getItem('accessToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log('[API] Request with token:', config.method?.toUpperCase(), config.url);
+      } else {
+        console.warn('[API] Request WITHOUT token:', config.method?.toUpperCase(), config.url);
       }
       return config;
     });

@@ -44,6 +44,7 @@ pub struct CreateDocument {
     pub owner_id: Uuid,
     pub encrypted_name: String,
     pub name_nonce: String,
+    pub content_nonce: String,
     pub content_hash: String,
     pub storage_path: String,
     pub size: i64,
