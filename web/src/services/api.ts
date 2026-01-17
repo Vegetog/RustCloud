@@ -204,7 +204,7 @@ class ApiService {
    * Access a share link (public, no auth required)
    */
   async accessShare(token: string, password?: string) {
-    return this.client.get<{ success: boolean; data: any }>(`/shares/${token}`, {
+    return this.client.get<{ success: boolean; data: any }>(`/shares/access/${token}`, {
       params: password ? { password } : undefined,
     });
   }
