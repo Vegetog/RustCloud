@@ -56,6 +56,9 @@ tmp/
 temp/
 *.tmp
 
+# 开发环境
+.api.pid
+
 # Claude 辅助文件
 .claude/
 CLAUDE.md

@@ -37,7 +37,9 @@ RustCloud 是一个采用零知识架构的加密云存储系统，提供端到�
 - Docker & Docker Compose
 - 8GB+ RAM
 
-### 一键启动
+### 一键启动（推荐）
+
+使用启动脚本自动启动所有服务（Docker依赖 + 后端API + 前端）：
 
 ```bash
 # 1. 克隆项目
@@ -47,17 +49,43 @@ cd rustcloud
 # 2. 配置环境
 cp .env.example .env
 
-# 3. 启动依赖服务
-docker-compose -f docker-compose.dev.yml up -d
+# 3. 给脚本添加执行权限
+chmod +x start-dev.sh stop-dev.sh
 
-# 4. 运行数据库迁移
-cd crates/rustcloud-database/migration && cargo run && cd ../../..
-
-# 5. 启动 API 服务
-cargo run -p rustcloud-api
+# 4. 一键启动开发环境
+./start-dev.sh
 ```
 
-服务将在 `http://localhost:8080` 启动。
+启动后访问：
+- **前端**: http://localhost:3000
+- **后端 API**: http://localhost:8080
+- **MinIO 控制台**: http://localhost:9001 (minioadmin/minioadmin)
+
+停止所有服务：
+```bash
+./stop-dev.sh
+```
+
+<details>
+<summary>📖 手动启动（点击展开）</summary>
+
+如果需要手动启动各个服务：
+
+```bash
+# 1. 启动 Docker 依赖服务
+docker-compose -f docker-compose.dev.yml up -d
+
+# 2. 运行数据库迁移
+cd crates/rustcloud-database/migration && cargo run && cd ../../..
+
+# 3. 启动后端 API 服务
+RUST_LOG=rustcloud=debug cargo run --bin rustcloud-api
+
+# 4. 启动前端开发服务器（新终端）
+cd web && npm install && npm run dev
+```
+
+</details>
 
 📖 **详细指南**: [QUICKSTART.md](./QUICKSTART.md)
 
