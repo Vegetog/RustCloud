@@ -22,7 +22,11 @@ pub fn create_router(state: AppState) -> Router {
 
     let public_share_routes = Router::new()
         .route("/access/:token", get(handlers::share::access_share_get))
-        .route("/access/:token", post(handlers::share::access_share_post));
+        .route("/access/:token", post(handlers::share::access_share_post))
+        .route(
+            "/access/:token/download",
+            get(handlers::share::download_shared_document),
+        );
 
     // Protected auth routes
     let protected_auth_routes = Router::new()

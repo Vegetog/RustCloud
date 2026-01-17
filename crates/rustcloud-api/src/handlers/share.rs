@@ -1,10 +1,14 @@
 //! Share handlers
 
 use axum::{
-    extract::{Path, State},
+    body::Body,
+    extract::{Path, Query, State},
+    http::{header, StatusCode},
+    response::Response,
     Json,
 };
 use chrono::{Duration, Utc};
+use serde::Deserialize;
 use uuid::Uuid;
 
 use rustcloud_auth::{check_password, create_password_hash};
@@ -255,4 +259,86 @@ async fn access_share_internal(
         size: doc.size,
         mime_type: doc.mime_type,
     }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DownloadShareQuery {
+    password: Option<String>,
+}
+
+/// GET /api/v1/shares/access/:token/download
+///
+/// Download shared document (public endpoint)
+pub async fn download_shared_document(
+    State(state): State<AppState>,
+    Path(token): Path<String>,
+    Query(query): Query<DownloadShareQuery>,
+) -> Result<Response, ApiError> {
+    let share_repo = ShareLinkRepository::new(state.db.clone());
+    let doc_repo = DocumentRepository::new(state.db.clone());
+
+    // Find share link by token
+    let share = share_repo
+        .find_by_token(&token)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::not_found("Share link"))?;
+
+    // Verify password if required
+    if let Some(password_hash) = &share.password_hash {
+        let provided_password = query
+            .password
+            .ok_or_else(|| ApiError::unauthorized("Password required"))?;
+
+        if !check_password(&provided_password, password_hash)
+            .map_err(|e| ApiError::internal(format!("Password verification failed: {}", e)))?
+        {
+            return Err(ApiError::unauthorized("Invalid password"));
+        }
+    }
+
+    // Check expiration
+    if let Some(expires_at) = share.expires_at {
+        if Utc::now() > expires_at {
+            return Err(ApiError::forbidden("Share link has expired"));
+        }
+    }
+
+    // Check access count
+    if let Some(max_count) = share.max_access_count {
+        if share.access_count >= max_count {
+            return Err(ApiError::forbidden("Access limit reached"));
+        }
+    }
+
+    // Get document
+    let doc = doc_repo
+        .find_by_id(share.document_id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::not_found("Document"))?;
+
+    // Get file from storage
+    let storage_object = state
+        .storage
+        .get(&doc.storage_path)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get file from storage: {}", e);
+            ApiError::internal("Failed to retrieve file")
+        })?;
+
+    // Build response with proper headers
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, &doc.mime_type)
+        .header(header::CONTENT_LENGTH, storage_object.content.len())
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", doc.id),
+        )
+        .body(Body::from(storage_object.content))
+        .map_err(|e| ApiError::internal(format!("Failed to build response: {}", e)))?;
+
+    Ok(response)
 }

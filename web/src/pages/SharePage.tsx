@@ -55,7 +55,7 @@ export function SharePage() {
   };
 
   const handleDownload = async () => {
-    if (!shareData) return;
+    if (!shareData || !token) return;
 
     setLoading(true);
     setError(null);
@@ -81,9 +81,11 @@ export function SharePage() {
         ['decrypt']
       );
 
-      // 4. Download encrypted file content
-      const documentId = shareData.document_id;
-      const contentResponse = await fetch(`/api/v1/documents/${documentId}/download`);
+      // 4. Download encrypted file content using share download endpoint
+      const downloadUrl = `/api/v1/shares/access/${token}/download${
+        password ? `?password=${encodeURIComponent(password)}` : ''
+      }`;
+      const contentResponse = await fetch(downloadUrl);
       if (!contentResponse.ok) {
         throw new Error('文件下载失败');
       }
