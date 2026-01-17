@@ -59,7 +59,6 @@ temp/
 # Claude 辅助文件
 .claude/
 CLAUDE.md
-TODO.md
 
 # Rust 工具链
 .cargo/
