@@ -250,6 +250,7 @@ async fn access_share_internal(
         encrypted_key: share.encrypted_key,
         encrypted_name: doc.encrypted_name,
         name_nonce: doc.name_nonce,
+        content_nonce: doc.content_nonce,
         content_hash: doc.content_hash,
         size: doc.size,
         mime_type: doc.mime_type,

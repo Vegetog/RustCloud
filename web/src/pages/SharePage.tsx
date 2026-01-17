@@ -55,7 +55,7 @@ export function SharePage() {
   };
 
   const handleDownload = async () => {
-    if (!shareData || !shareData.document) return;
+    if (!shareData) return;
 
     setLoading(true);
     setError(null);
@@ -82,7 +82,7 @@ export function SharePage() {
       );
 
       // 4. Download encrypted file content
-      const documentId = shareData.document.id;
+      const documentId = shareData.document_id;
       const contentResponse = await fetch(`/api/v1/documents/${documentId}/download`);
       if (!contentResponse.ok) {
         throw new Error('文件下载失败');
@@ -90,7 +90,7 @@ export function SharePage() {
       const encryptedContent = await contentResponse.arrayBuffer();
 
       // 5. Decrypt file content
-      const contentNonceBuffer = crypto.base64ToArrayBuffer(shareData.document.content_nonce);
+      const contentNonceBuffer = crypto.base64ToArrayBuffer(shareData.content_nonce);
       const decryptedContent = await window.crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: contentNonceBuffer },
         documentKey,
@@ -98,8 +98,8 @@ export function SharePage() {
       );
 
       // 6. Decrypt file name
-      const nameNonceBuffer = crypto.base64ToArrayBuffer(shareData.document.name_nonce);
-      const encryptedNameBuffer = crypto.base64ToArrayBuffer(shareData.document.encrypted_name);
+      const nameNonceBuffer = crypto.base64ToArrayBuffer(shareData.name_nonce);
+      const encryptedNameBuffer = crypto.base64ToArrayBuffer(shareData.encrypted_name);
       const nameBuffer = await window.crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: nameNonceBuffer },
         documentKey,
@@ -202,23 +202,11 @@ export function SharePage() {
           >
             <h3>文件信息</h3>
             <p>
-              <strong>文件大小:</strong> {shareData.document?.size || 'Unknown'}
+              <strong>文件大小:</strong> {shareData.size || 'Unknown'} 字节
             </p>
             <p>
-              <strong>类型:</strong> {shareData.document?.mime_type || 'Unknown'}
+              <strong>类型:</strong> {shareData.mime_type || 'Unknown'}
             </p>
-            <p>
-              <strong>分享时间:</strong>{' '}
-              {shareData.created_at
-                ? new Date(shareData.created_at).toLocaleString('zh-CN')
-                : 'Unknown'}
-            </p>
-            {shareData.max_access_count && (
-              <p>
-                <strong>访问次数:</strong> {shareData.access_count || 0} /{' '}
-                {shareData.max_access_count}
-              </p>
-            )}
           </div>
 
           <button

@@ -59,6 +59,7 @@ pub struct AccessShareResponse {
     pub encrypted_key: String,
     pub encrypted_name: String,
     pub name_nonce: String,
+    pub content_nonce: String,
     pub content_hash: String,
     pub size: i64,
     pub mime_type: String,
