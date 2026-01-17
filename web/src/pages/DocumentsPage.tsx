@@ -1,9 +1,11 @@
 // DocumentsPage: Main page for document management
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
+import { ShareModal } from '../components/ShareModal';
+import { apiService } from '../services/api';
 
 export function DocumentsPage() {
   const navigate = useNavigate();
@@ -22,6 +24,11 @@ export function DocumentsPage() {
   } = useDocumentStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Share modal state
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareDocumentId, setShareDocumentId] = useState<string | null>(null);
+  const [shareEncryptedKey, setShareEncryptedKey] = useState<string | null>(null);
 
   useEffect(() => {
     loadDocuments(1);
@@ -45,6 +52,26 @@ export function DocumentsPage() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleShare = async (documentId: string) => {
+    try {
+      // Fetch document details to get encrypted_key
+      const response = await apiService.getDocumentDetail(documentId);
+      const encryptedKey = response.data.data.encrypted_key;
+
+      setShareDocumentId(documentId);
+      setShareEncryptedKey(encryptedKey);
+      setShareModalOpen(true);
+    } catch (err: any) {
+      alert('获取文档信息失败：' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleCloseShareModal = () => {
+    setShareModalOpen(false);
+    setShareDocumentId(null);
+    setShareEncryptedKey(null);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -280,24 +307,41 @@ export function DocumentsPage() {
                       下载
                     </button>
                     {doc.permission_level === 'owner' && (
-                      <button
-                        onClick={async () => {
-                          if (window.confirm('确定要删除这个文件吗？')) {
-                            await deleteDocument(doc.id);
-                          }
-                        }}
-                        style={{
-                          padding: '6px 12px',
-                          backgroundColor: '#dc3545',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                        }}
-                      >
-                        删除
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleShare(doc.id)}
+                          style={{
+                            padding: '6px 12px',
+                            marginRight: '5px',
+                            backgroundColor: '#28a745',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                          }}
+                        >
+                          分享
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('确定要删除这个文件吗？')) {
+                              await deleteDocument(doc.id);
+                            }
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#dc3545',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                          }}
+                        >
+                          删除
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -321,6 +365,15 @@ export function DocumentsPage() {
         <strong>🔒 安全提示:</strong> 所有文件在浏览器本地加密后上传，服务器无法查看您的文件内容。
         密钥仅存储在内存中，页面刷新后将需要重新登录。
       </div>
+
+      {/* Share Modal */}
+      {shareModalOpen && shareDocumentId && shareEncryptedKey && (
+        <ShareModal
+          documentId={shareDocumentId}
+          encryptedKey={shareEncryptedKey}
+          onClose={handleCloseShareModal}
+        />
+      )}
     </div>
   );
 }

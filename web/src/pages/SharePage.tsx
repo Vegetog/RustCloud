@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { CryptoService } from '../services/crypto';
 
 export function SharePage() {
   const { token } = useParams<{ token: string }>();
@@ -54,17 +55,74 @@ export function SharePage() {
   };
 
   const handleDownload = async () => {
-    if (!shareData) return;
+    if (!shareData || !shareData.document) return;
+
+    setLoading(true);
+    setError(null);
 
     try {
-      // For share links, we need to get the shareKey from URL fragment
-      // and decrypt the document using that key instead of the user's private key
-      // This is a simplified version - full implementation would require
-      // extracting shareKey from window.location.hash and implementing
-      // share-specific decryption logic
-      alert('下载功能正在开发中。完整实现需要从 URL fragment 中提取 shareKey 进行解密。');
+      const crypto = new CryptoService();
+
+      // 1. Extract document key from URL fragment
+      const documentKeyBase64 = window.location.hash.substring(1); // Remove '#'
+      if (!documentKeyBase64) {
+        throw new Error('分享链接无效：缺少解密密钥');
+      }
+
+      // 2. Convert base64 document key to ArrayBuffer
+      const documentKeyBuffer = crypto.base64ToArrayBuffer(documentKeyBase64);
+
+      // 3. Import document key as AES-GCM key
+      const documentKey = await window.crypto.subtle.importKey(
+        'raw',
+        documentKeyBuffer,
+        'AES-GCM',
+        false,
+        ['decrypt']
+      );
+
+      // 4. Download encrypted file content
+      const documentId = shareData.document.id;
+      const contentResponse = await fetch(`/api/v1/documents/${documentId}/download`);
+      if (!contentResponse.ok) {
+        throw new Error('文件下载失败');
+      }
+      const encryptedContent = await contentResponse.arrayBuffer();
+
+      // 5. Decrypt file content
+      const contentNonceBuffer = crypto.base64ToArrayBuffer(shareData.document.content_nonce);
+      const decryptedContent = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: contentNonceBuffer },
+        documentKey,
+        encryptedContent
+      );
+
+      // 6. Decrypt file name
+      const nameNonceBuffer = crypto.base64ToArrayBuffer(shareData.document.name_nonce);
+      const encryptedNameBuffer = crypto.base64ToArrayBuffer(shareData.document.encrypted_name);
+      const nameBuffer = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: nameNonceBuffer },
+        documentKey,
+        encryptedNameBuffer
+      );
+      const fileName = new TextDecoder().decode(nameBuffer);
+
+      // 7. Trigger browser download
+      const blob = new Blob([decryptedContent]);
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setLoading(false);
     } catch (err: any) {
-      setError('下载失败');
+      console.error('Download failed:', err);
+      setError(err.message || '文件下载失败');
+      setLoading(false);
     }
   };
 
