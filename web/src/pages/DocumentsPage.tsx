@@ -2,6 +2,29 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Cloud,
+  Home,
+  Folder,
+  Lock,
+  Users,
+  Trash2,
+  Search,
+  Plus,
+  Download,
+  Share2,
+  MoreVertical,
+  FileText,
+  Image as ImageIcon,
+  File,
+  Code,
+  LogOut,
+  Upload,
+  X,
+  Loader2,
+  ShieldCheck,
+  AlertCircle,
+} from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { ShareModal } from '../components/ShareModal';
@@ -24,6 +47,8 @@ export function DocumentsPage() {
   } = useDocumentStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
 
   // Share modal state
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -77,294 +102,322 @@ export function DocumentsPage() {
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes < 1024 * 1024 * 1024)
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleString('zh-CN');
+    const date = new Date(dateString);
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
   };
 
-  return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '30px',
-          padding: '20px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-        }}
-      >
-        <div>
-          <h1 style={{ margin: 0 }}>我的文档</h1>
-          <p style={{ margin: '5px 0 0 0', color: '#666' }}>
-            {user?.email} | 共 {total} 个文档
-          </p>
-        </div>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          登出
-        </button>
-      </div>
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) return ImageIcon;
+    if (mimeType.startsWith('text/') || mimeType.includes('javascript') || mimeType.includes('json'))
+      return Code;
+    if (
+      mimeType.includes('pdf') ||
+      mimeType.includes('document') ||
+      mimeType.includes('word')
+    )
+      return FileText;
+    return File;
+  };
 
-      {/* Upload Section */}
-      <div style={{ marginBottom: '30px' }}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          onChange={handleFileSelect}
-          style={{ display: 'none' }}
-          id="fileInput"
-        />
-        <label htmlFor="fileInput">
+  const getFileColor = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) return 'bg-orange-50 text-orange-500';
+    if (mimeType.startsWith('text/') || mimeType.includes('javascript'))
+      return 'bg-slate-100 text-slate-600';
+    if (mimeType.includes('pdf') || mimeType.includes('document'))
+      return 'bg-blue-50 text-blue-500';
+    return 'bg-slate-100 text-slate-500';
+  };
+
+  const filteredDocuments = documents.filter(() => {
+    // For now, show all documents in "all" tab
+    // You can add filtering logic here for other tabs
+    return true;
+  });
+
+  return (
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+      {/* 侧边栏 */}
+      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 shrink-0">
+        {/* Logo */}
+        <div className="p-6 flex items-center space-x-3 text-white border-b border-slate-800">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg shadow-lg shadow-blue-500/30">
+            <Cloud className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">RustCloud</h1>
+            <p className="text-xs text-slate-400">零知识加密</p>
+          </div>
+        </div>
+
+        {/* 导航 */}
+        <nav className="flex-1 px-4 space-y-1 mt-4">
+          {[
+            { id: 'all', icon: Home, label: '全部文件' },
+            { id: 'encrypted', icon: Lock, label: '加密保险箱' },
+            { id: 'shared', icon: Users, label: '共享协作' },
+            { id: 'trash', icon: Trash2, label: '回收站' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+                activeTab === item.id
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
+                  : 'hover:bg-slate-800'
+              }`}
+            >
+              <item.icon
+                className={`w-5 h-5 ${
+                  activeTab === item.id ? 'text-white' : 'text-slate-400'
+                }`}
+              />
+              <span className="font-medium text-sm">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* 用户信息和登出 */}
+        <div className="p-4 border-t border-slate-800">
+          <div className="flex items-center space-x-3 mb-3 px-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-medium text-sm">
+              {user?.email?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-white truncate">
+                {user?.email?.split('@')[0] || 'User'}
+              </div>
+              <div className="text-xs text-slate-400 truncate">{user?.email}</div>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>登出</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* 主内容区 */}
+      <main className="flex-1 flex flex-col min-w-0">
+        {/* 顶部栏 */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
+          <div className="flex items-center text-sm font-medium text-slate-500">
+            <span className="text-slate-800 capitalize">{activeTab}</span>
+            <span className="ml-2 text-slate-400">·</span>
+            <span className="ml-2">{total} 个文档</span>
+          </div>
+
+          {/* 搜索框 */}
+          <div className="flex-1 max-w-lg mx-8 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="搜索文件..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-100 border-none rounded-lg py-2 pl-10 pr-4 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+            />
+          </div>
+
+          {/* 上传按钮 */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={loading}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: loading ? '#ccc' : '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: '16px',
-            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/30 flex items-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? '上传中...' : '上传文件'}
+            <Plus className="w-4 h-4" />
+            <span>上传文件</span>
           </button>
-        </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+          />
+        </header>
 
-        {uploadProgress > 0 && uploadProgress < 100 && (
-          <div style={{ marginTop: '10px' }}>
-            <div
-              style={{
-                width: '100%',
-                height: '20px',
-                backgroundColor: '#e9ecef',
-                borderRadius: '4px',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  width: `${uploadProgress}%`,
-                  height: '100%',
-                  backgroundColor: '#007bff',
-                  transition: 'width 0.3s ease',
-                }}
-              />
+        {/* 内容区域 */}
+        <div className="flex-1 p-8 overflow-y-auto">
+          {/* 上传进度 */}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="mb-6 bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-center space-x-3 mb-2">
+                <Upload className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-slate-700">
+                  {uploadProgress === 10 && '正在加密文件...'}
+                  {uploadProgress === 50 && '正在上传...'}
+                  {uploadProgress > 50 && uploadProgress < 100 && '上传中...'}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
             </div>
-            <div style={{ marginTop: '5px', fontSize: '14px', color: '#666' }}>
-              {uploadProgress === 10 && '正在加密文件...'}
-              {uploadProgress === 50 && '正在上传...'}
-              {uploadProgress === 100 && '上传完成！'}
+          )}
+
+          {/* 错误提示 */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 shadow-sm flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 text-sm text-red-700">{error}</div>
+              <button
+                onClick={clearError}
+                className="text-red-400 hover:text-red-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* Error Message */}
-      {error && (
-        <div
-          style={{
-            padding: '15px',
-            marginBottom: '20px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '4px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span>{error}</span>
-          <button
-            onClick={clearError}
-            style={{
-              padding: '5px 10px',
-              backgroundColor: 'transparent',
-              border: '1px solid #c33',
-              color: '#c33',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            关闭
-          </button>
-        </div>
-      )}
+          {/* 文件列表 */}
+          {loading && documents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+              <p className="text-slate-500">加载中...</p>
+            </div>
+          ) : filteredDocuments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <Folder className="w-10 h-10 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                还没有文档
+              </h3>
+              <p className="text-slate-500 text-sm mb-6">
+                点击上传按钮开始上传您的第一个加密文件
+              </p>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/30 flex items-center space-x-2 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>上传文件</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* 文件卡片网格 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                {filteredDocuments.map((doc) => {
+                  const FileIcon = getFileIcon(doc.mime_type);
+                  const colorClass = getFileColor(doc.mime_type);
 
-      {/* Document List */}
-      {loading && documents.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>
-          加载中...
-        </div>
-      ) : documents.length === 0 ? (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '50px',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px',
-            color: '#666',
-          }}
-        >
-          <h3>还没有文档</h3>
-          <p>点击"上传文件"按钮开始上传您的第一个加密文件</p>
-        </div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              backgroundColor: 'white',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              borderRadius: '8px',
-              overflow: 'hidden',
-            }}
-          >
-            <thead>
-              <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                <th style={{ padding: '15px', textAlign: 'left' }}>文件名</th>
-                <th style={{ padding: '15px', textAlign: 'left' }}>大小</th>
-                <th style={{ padding: '15px', textAlign: 'left' }}>类型</th>
-                <th style={{ padding: '15px', textAlign: 'left' }}>上传时间</th>
-                <th style={{ padding: '15px', textAlign: 'left' }}>权限</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => (
-                <tr
-                  key={doc.id}
-                  style={{
-                    borderBottom: '1px solid #dee2e6',
-                  }}
-                >
-                  <td style={{ padding: '15px' }}>
-                    <div style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                      {doc.encrypted_name.substring(0, 16)}...
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#ccc', marginTop: '2px' }}>
-                      (加密)
-                    </div>
-                  </td>
-                  <td style={{ padding: '15px' }}>{formatFileSize(doc.size)}</td>
-                  <td style={{ padding: '15px' }}>{doc.mime_type || 'unknown'}</td>
-                  <td style={{ padding: '15px', fontSize: '14px' }}>
-                    {formatDate(doc.created_at)}
-                  </td>
-                  <td style={{ padding: '15px' }}>
-                    <span
-                      style={{
-                        padding: '4px 8px',
-                        backgroundColor:
-                          doc.permission_level === 'owner'
-                            ? '#28a745'
+                  return (
+                    <div
+                      key={doc.id}
+                      className="group bg-white border border-slate-200 rounded-xl p-4 hover:shadow-lg hover:-translate-y-1 transition-all relative"
+                    >
+                      {/* 文件图标 */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div className={`p-2 rounded-lg ${colorClass}`}>
+                          <FileIcon className="w-6 h-6" />
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Lock className="w-3.5 h-3.5 text-emerald-500" />
+                          <button className="p-1 hover:bg-slate-100 rounded text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 文件名（加密显示） */}
+                      <h3 className="font-medium text-slate-700 text-sm truncate mb-1 font-mono">
+                        {doc.encrypted_name.substring(0, 20)}...
+                      </h3>
+
+                      {/* 文件信息 */}
+                      <div className="flex justify-between items-center text-xs text-slate-400 mb-3">
+                        <span>{formatFileSize(doc.size)}</span>
+                        <span>{formatDate(doc.created_at)}</span>
+                      </div>
+
+                      {/* 权限标签 */}
+                      <div className="mb-3">
+                        <span
+                          className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                            doc.permission_level === 'owner'
+                              ? 'bg-green-100 text-green-700'
+                              : doc.permission_level === 'write'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {doc.permission_level === 'owner'
+                            ? '拥有者'
                             : doc.permission_level === 'write'
-                            ? '#ffc107'
-                            : '#6c757d',
-                        color: 'white',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                      }}
-                    >
-                      {doc.permission_level === 'owner'
-                        ? '拥有者'
-                        : doc.permission_level === 'write'
-                        ? '读写'
-                        : '只读'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '15px', textAlign: 'center' }}>
-                    <button
-                      onClick={() => downloadDocument(doc.id)}
-                      style={{
-                        padding: '6px 12px',
-                        marginRight: '5px',
-                        backgroundColor: '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                      }}
-                    >
-                      下载
-                    </button>
-                    {doc.permission_level === 'owner' && (
-                      <>
-                        <button
-                          onClick={() => handleShare(doc.id)}
-                          style={{
-                            padding: '6px 12px',
-                            marginRight: '5px',
-                            backgroundColor: '#28a745',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                          }}
-                        >
-                          分享
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (window.confirm('确定要删除这个文件吗？')) {
-                              await deleteDocument(doc.id);
-                            }
-                          }}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                          }}
-                        >
-                          删除
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                            ? '读写'
+                            : '只读'}
+                        </span>
+                      </div>
 
-      {/* Security Notice */}
-      <div
-        style={{
-          marginTop: '40px',
-          padding: '15px',
-          backgroundColor: '#e7f3ff',
-          borderRadius: '4px',
-          fontSize: '14px',
-          color: '#004085',
-        }}
-      >
-        <strong>🔒 安全提示:</strong> 所有文件在浏览器本地加密后上传，服务器无法查看您的文件内容。
-        密钥仅存储在内存中，页面刷新后将需要重新登录。
-      </div>
+                      {/* 操作按钮 */}
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => downloadDocument(doc.id)}
+                          className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>下载</span>
+                        </button>
+                        {doc.permission_level === 'owner' && (
+                          <>
+                            <button
+                              onClick={() => handleShare(doc.id)}
+                              className="px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-medium transition-colors"
+                              title="分享"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('确定要删除这个文件吗？')) {
+                                  await deleteDocument(doc.id);
+                                }
+                              }}
+                              className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors"
+                              title="删除"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 安全提示 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-blue-900">
+                    <p className="font-medium mb-1">零知识加密保证</p>
+                    <p className="text-blue-700">
+                      所有文件在浏览器本地加密后上传，服务器无法查看您的文件内容。密钥仅存储在内存中，页面刷新后将需要重新登录。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </main>
 
       {/* Share Modal */}
       {shareModalOpen && shareDocumentId && shareEncryptedKey && (
