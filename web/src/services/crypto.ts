@@ -323,7 +323,9 @@ export class CryptoService {
    * @returns ArrayBuffer
    */
   base64ToArrayBuffer(base64: string): ArrayBuffer {
-    const binary = atob(base64);
+    // Clean the base64 string: remove whitespace, newlines, etc.
+    const cleanBase64 = base64.replace(/\s/g, '');
+    const binary = atob(cleanBase64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);

@@ -24,10 +24,12 @@ import {
   Loader2,
   ShieldCheck,
   AlertCircle,
+  Eye,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { ShareModal } from '../components/ShareModal';
+import { PreviewModal } from '../components/PreviewModal';
 import { apiService } from '../services/api';
 
 export function DocumentsPage() {
@@ -54,6 +56,9 @@ export function DocumentsPage() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareDocumentId, setShareDocumentId] = useState<string | null>(null);
   const [shareEncryptedKey, setShareEncryptedKey] = useState<string | null>(null);
+
+  // Preview modal state
+  const [previewDocument, setPreviewDocument] = useState<any | null>(null);
 
   useEffect(() => {
     loadDocuments(1);
@@ -97,6 +102,22 @@ export function DocumentsPage() {
     setShareModalOpen(false);
     setShareDocumentId(null);
     setShareEncryptedKey(null);
+  };
+
+  const handlePreview = async (doc: any) => {
+    try {
+      // Fetch document details to get encrypted_key (not included in list response)
+      const response = await apiService.getDocumentDetail(doc.id);
+      const documentDetail = response.data.data;
+
+      // Merge list data with detail data
+      setPreviewDocument({
+        ...doc,
+        encrypted_key: documentDetail.encrypted_key,
+      });
+    } catch (err: any) {
+      alert('获取文档信息失败：' + (err.response?.data?.message || err.message));
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -368,6 +389,14 @@ export function DocumentsPage() {
                       {/* 操作按钮 */}
                       <div className="flex space-x-2">
                         <button
+                          onClick={() => handlePreview(doc)}
+                          className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-lg text-xs font-medium transition-colors"
+                          title="预览"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>预览</span>
+                        </button>
+                        <button
                           onClick={() => downloadDocument(doc.id)}
                           className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-medium transition-colors"
                         >
@@ -425,6 +454,20 @@ export function DocumentsPage() {
           documentId={shareDocumentId}
           encryptedKey={shareEncryptedKey}
           onClose={handleCloseShareModal}
+        />
+      )}
+
+      {/* Preview Modal */}
+      {previewDocument && (
+        <PreviewModal
+          documentId={previewDocument.id}
+          fileName={previewDocument.encrypted_name}
+          mimeType={previewDocument.mime_type}
+          encryptedKey={previewDocument.encrypted_key}
+          encryptedName={previewDocument.encrypted_name}
+          nameNonce={previewDocument.name_nonce}
+          contentNonce={previewDocument.content_nonce}
+          onClose={() => setPreviewDocument(null)}
         />
       )}
     </div>
