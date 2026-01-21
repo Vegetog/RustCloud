@@ -1,7 +1,7 @@
 //! Authentication handlers
 
 use axum::{
-    extract::State,
+    extract::{Path, State},
     Json,
 };
 use uuid::Uuid;
@@ -10,7 +10,7 @@ use rustcloud_auth::{check_password, create_password_hash, validate_password_str
 use rustcloud_database::{CreateUser, UserRepository, UserRepositoryTrait};
 
 use crate::dto::{
-    LoginRequest, LoginResponse, MeResponse, RefreshRequest, RefreshResponse,
+    LoginRequest, LoginResponse, MeResponse, PublicKeyResponse, RefreshRequest, RefreshResponse,
     RegisterRequest, RegisterResponse, UserResponse,
 };
 use crate::error::ApiError;
@@ -242,5 +242,29 @@ pub async fn me(
             public_key: db_user.public_key,
             created_at: db_user.created_at,
         },
+    }))
+}
+
+/// GET /api/v1/auth/users/:email/public-key
+///
+/// Get user's public key by email (for key re-encryption)
+pub async fn get_user_public_key(
+    State(state): State<AppState>,
+    AuthUser(_user): AuthUser,
+    Path(email): Path<String>,
+) -> Result<ApiResponse<PublicKeyResponse>, ApiError> {
+    let user_repo = UserRepository::new(state.db.clone());
+    let target_user = user_repo
+        .find_by_email(&email)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::not_found("User"))?;
+
+    tracing::debug!("Retrieved public key for user: {}", target_user.email);
+
+    Ok(ApiResponse::success(PublicKeyResponse {
+        user_id: target_user.id,
+        email: target_user.email,
+        public_key: target_user.public_key,
     }))
 }

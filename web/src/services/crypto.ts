@@ -255,6 +255,53 @@ export class CryptoService {
   }
 
   /**
+   * Re-encrypt document key for another user
+   * This enables zero-knowledge key sharing: the document key is decrypted
+   * with the grantor's private key, then re-encrypted with the grantee's public key.
+   * The server never sees the plaintext document key.
+   *
+   * @param encryptedKey - Current encrypted document key (base64)
+   * @param grantorPrivateKey - Grantor's RSA private key
+   * @param granteePublicKeyBase64 - Grantee's public key (base64)
+   * @returns Re-encrypted document key (base64)
+   */
+  async reEncryptDocumentKey(
+    encryptedKey: string,
+    grantorPrivateKey: CryptoKey,
+    granteePublicKeyBase64: string
+  ): Promise<string> {
+    // 1. Decrypt document key with grantor's private key
+    const encryptedKeyBuffer = this.base64ToArrayBuffer(encryptedKey);
+    const dekBuffer = await crypto.subtle.decrypt(
+      { name: 'RSA-OAEP' },
+      grantorPrivateKey,
+      encryptedKeyBuffer
+    );
+
+    // 2. Import grantee's public key
+    const granteePublicKeyBuffer = this.base64ToArrayBuffer(granteePublicKeyBase64);
+    const granteePublicKey = await crypto.subtle.importKey(
+      'spki',
+      granteePublicKeyBuffer,
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      false,
+      ['encrypt']
+    );
+
+    // 3. Re-encrypt with grantee's public key
+    const reEncryptedKey = await crypto.subtle.encrypt(
+      { name: 'RSA-OAEP' },
+      granteePublicKey,
+      dekBuffer
+    );
+
+    // 4. Clear plaintext key from memory (security best practice)
+    new Uint8Array(dekBuffer).fill(0);
+
+    return this.arrayBufferToBase64(reEncryptedKey);
+  }
+
+  /**
    * Convert ArrayBuffer to Base64 string
    *
    * @param buffer - ArrayBuffer to convert

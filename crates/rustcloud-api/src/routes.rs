@@ -31,7 +31,11 @@ pub fn create_router(state: AppState) -> Router {
     // Protected auth routes
     let protected_auth_routes = Router::new()
         .route("/logout", post(handlers::auth::logout))
-        .route("/me", get(handlers::auth::me));
+        .route("/me", get(handlers::auth::me))
+        .route(
+            "/users/:email/public-key",
+            get(handlers::auth::get_user_public_key),
+        );
 
     // Protected document routes
     let document_routes = Router::new()
@@ -40,6 +44,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/:id", get(handlers::document::get_document))
         .route("/:id/download", get(handlers::document::download_document))
         .route("/:id", delete(handlers::document::delete_document))
+        .route("/:id/permissions", get(handlers::document::list_permissions))
         .route("/:id/permissions", post(handlers::document::grant_permission))
         .route(
             "/:id/permissions/:user_id",

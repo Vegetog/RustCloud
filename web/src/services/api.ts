@@ -113,6 +113,16 @@ class ApiService {
     return this.client.get<{ success: boolean; data: { user: any } }>('/auth/me');
   }
 
+  /**
+   * Get user's public key by email
+   */
+  async getUserPublicKey(email: string) {
+    return this.client.get<{
+      success: boolean;
+      data: { user_id: string; email: string; public_key: string };
+    }>(`/auth/users/${encodeURIComponent(email)}/public-key`);
+  }
+
   // ===== Documents API =====
 
   /**
@@ -182,6 +192,21 @@ class ApiService {
    */
   async revokePermission(docId: string, userId: string) {
     return this.client.delete(`/documents/${docId}/permissions/${userId}`);
+  }
+
+  /**
+   * Get document permissions (list of users with access)
+   */
+  async getDocumentPermissions(docId: string) {
+    return this.client.get<{
+      success: boolean;
+      data: Array<{
+        user_id: string;
+        user_email: string;
+        permission_level: string;
+        granted_at: string;
+      }>;
+    }>(`/documents/${docId}/permissions`);
   }
 
   // ===== Shares API =====

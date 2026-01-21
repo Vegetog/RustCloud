@@ -112,3 +112,11 @@ pub struct RefreshResponse {
 pub struct MeResponse {
     pub user: UserResponse,
 }
+
+/// Public key response (for GET /users/:email/public-key)
+#[derive(Debug, Serialize)]
+pub struct PublicKeyResponse {
+    pub user_id: Uuid,
+    pub email: String,
+    pub public_key: String,
+}

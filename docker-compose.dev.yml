@@ -61,6 +61,18 @@ services:
       echo 'Bucket rustcloud created successfully';
       "
 
+  # Database Web UI (Adminer)
+  adminer:
+    image: adminer:latest
+    container_name: rustcloud-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"  # 改为 8081 避免与 API 冲突
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
   redis_data:

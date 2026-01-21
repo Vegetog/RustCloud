@@ -429,6 +429,52 @@ pub async fn grant_permission(
     }))
 }
 
+/// GET /api/v1/documents/:id/permissions
+///
+/// List all users with access to a document
+pub async fn list_permissions(
+    State(state): State<AppState>,
+    AuthUser(user): AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<ApiResponse<Vec<PermissionResponse>>, ApiError> {
+    let key_repo = DocumentKeyRepository::new(state.db.clone());
+    let user_repo = UserRepository::new(state.db.clone());
+
+    // Verify user has access to this document
+    key_repo
+        .find_by_document_and_user(id, user.id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::forbidden("No access to this document"))?;
+
+    // Get all keys for this document
+    let keys = key_repo
+        .find_by_document(id)
+        .await
+        .map_err(ApiError::from)?;
+
+    // Build permission list
+    let mut permissions = Vec::with_capacity(keys.len());
+    for key in keys {
+        let target_user = user_repo
+            .find_by_id(key.user_id)
+            .await
+            .map_err(ApiError::from)?
+            .ok_or_else(|| ApiError::internal("User not found"))?;
+
+        permissions.push(PermissionResponse {
+            user_id: target_user.id,
+            user_email: target_user.email,
+            permission_level: permission_to_string(key.permission_level),
+            granted_at: key.created_at,
+        });
+    }
+
+    tracing::debug!("Listed {} permissions for document {}", permissions.len(), id);
+
+    Ok(ApiResponse::success(permissions))
+}
+
 /// DELETE /api/v1/documents/:id/permissions/:user_id
 ///
 /// Revoke permission from a user
