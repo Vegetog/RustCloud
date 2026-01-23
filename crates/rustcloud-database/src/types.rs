@@ -56,6 +56,7 @@ pub struct CreateDocument {
 pub struct UpdateDocument {
     pub encrypted_name: Option<String>,
     pub name_nonce: Option<String>,
+    pub content_nonce: Option<String>,
     pub content_hash: Option<String>,
     pub storage_path: Option<String>,
     pub size: Option<i64>,

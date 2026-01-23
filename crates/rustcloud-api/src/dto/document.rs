@@ -93,3 +93,20 @@ pub struct PermissionResponse {
     pub permission_level: String,
     pub granted_at: DateTime<Utc>,
 }
+
+/// Update document request
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdateDocumentRequest {
+    #[validate(length(min = 1, max = 1000))]
+    pub encrypted_name: Option<String>,
+
+    #[validate(length(min = 1, max = 200))]
+    pub name_nonce: Option<String>,
+
+    #[validate(length(min = 1, max = 200))]
+    pub content_nonce: Option<String>,
+
+    pub content_hash: Option<String>,
+    pub storage_path: Option<String>,
+    pub size: Option<i64>,
+}

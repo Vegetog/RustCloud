@@ -165,8 +165,11 @@ export function LoginPage() {
               <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-blue-900">
                 <p className="font-medium mb-1">零知识加密保证</p>
-                <p className="text-blue-700">
+                <p className="text-blue-700 mb-2">
                   您的主密钥和私钥仅存储在内存中，永不发送到服务器。所有文件在客户端加密，服务器无法访问您的数据。
+                </p>
+                <p className="text-blue-600 text-[11px]">
+                  ⚠️ 刷新页面或关闭浏览器将清除内存中的密钥，需要重新登录才能访问文件。这是零知识架构的安全保障。
                 </p>
               </div>
             </div>

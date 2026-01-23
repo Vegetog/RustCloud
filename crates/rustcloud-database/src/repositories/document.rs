@@ -168,6 +168,9 @@ impl DocumentRepositoryTrait for DocumentRepository {
         if let Some(name_nonce) = data.name_nonce {
             model.name_nonce = Set(name_nonce);
         }
+        if let Some(content_nonce) = data.content_nonce {
+            model.content_nonce = Set(content_nonce);
+        }
         if let Some(content_hash) = data.content_hash {
             model.content_hash = Set(content_hash);
         }

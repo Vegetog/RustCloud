@@ -178,6 +178,38 @@ class ApiService {
   }
 
   /**
+   * Update document metadata
+   */
+  async updateDocument(
+    docId: string,
+    data: {
+      encrypted_name?: string;
+      name_nonce?: string;
+      content_nonce?: string;
+      content_hash?: string;
+      storage_path?: string;
+      size?: number;
+    }
+  ) {
+    return this.client.patch<{
+      success: boolean;
+      data: {
+        id: string;
+        encrypted_name: string;
+        name_nonce: string;
+        content_nonce: string;
+        mime_type: string;
+        size: number;
+        content_hash: string;
+        storage_path: string;
+        owner_id: string;
+        created_at: string;
+        updated_at: string;
+      };
+    }>(`/documents/${docId}`, data);
+  }
+
+  /**
    * Grant permission to another user
    */
   async grantPermission(
@@ -207,6 +239,26 @@ class ApiService {
         granted_at: string;
       }>;
     }>(`/documents/${docId}/permissions`);
+  }
+
+  // ===== Storage API =====
+
+  /**
+   * Upload file to storage
+   */
+  async uploadFile(file: Blob, fileName?: string) {
+    const formData = new FormData();
+    formData.append('file', file, fileName || 'encrypted');
+
+    // Remove Content-Type header to let Axios set it automatically with boundary parameter
+    return this.client.post<{
+      success: boolean;
+      data: { storage_path: string };
+    }>('/storage/upload', formData, {
+      headers: {
+        'Content-Type': undefined,
+      },
+    });
   }
 
   // ===== Shares API =====

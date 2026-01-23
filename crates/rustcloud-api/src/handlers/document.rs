@@ -11,12 +11,12 @@ use uuid::Uuid;
 use rustcloud_database::{
     CreateDocument, CreateDocumentKey, DocumentKeyRepository, DocumentKeyRepositoryTrait,
     DocumentListParams, DocumentRepository, DocumentRepositoryTrait, PermissionLevel,
-    SortField, SortOrder, UserRepository, UserRepositoryTrait,
+    SortField, SortOrder, UpdateDocument, UserRepository, UserRepositoryTrait,
 };
 
 use crate::dto::{
     DocumentDetailResponse, DocumentListQuery, DocumentListResponse, DocumentResponse,
-    GrantPermissionRequest, PermissionResponse, UploadMetadata,
+    GrantPermissionRequest, PermissionResponse, UpdateDocumentRequest, UploadMetadata,
 };
 use crate::error::ApiError;
 use crate::extractors::{AuthUser, ValidatedJson};
@@ -346,6 +346,75 @@ pub async fn delete_document(
     tracing::info!("Document deleted: {} by user {}", id, user.email);
 
     Ok(NoContent)
+}
+
+/// PATCH /api/v1/documents/:id
+///
+/// Update document (metadata or content)
+///
+/// Permissions:
+/// - Write: Can update document content
+/// - Owner: Can update document content
+pub async fn update_document(
+    State(state): State<AppState>,
+    AuthUser(user): AuthUser,
+    Path(id): Path<Uuid>,
+    ValidatedJson(req): ValidatedJson<UpdateDocumentRequest>,
+) -> Result<ApiResponse<DocumentResponse>, ApiError> {
+    tracing::info!(
+        "Update document handler called: doc_id={}, user={}, data={:?}",
+        id,
+        user.email,
+        req
+    );
+
+    let doc_repo = DocumentRepository::new(state.db.clone());
+    let key_repo = DocumentKeyRepository::new(state.db.clone());
+
+    // 1. Check document access and permission level
+    let my_key = key_repo
+        .find_by_document_and_user(id, user.id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::forbidden("No access to this document"))?;
+
+    // 2. Only Write or Owner can edit
+    if my_key.permission_level == PermissionLevel::Read {
+        return Err(ApiError::forbidden("Read-only users cannot edit document"));
+    }
+
+    // 3. Update document in database
+    let update_data = UpdateDocument {
+        encrypted_name: req.encrypted_name,
+        name_nonce: req.name_nonce,
+        content_nonce: req.content_nonce,
+        content_hash: req.content_hash,
+        storage_path: req.storage_path,
+        size: req.size,
+    };
+
+    let updated_doc = doc_repo.update(id, update_data).await.map_err(ApiError::from)?;
+
+    tracing::info!(
+        "Document updated: {} by user {} ({:?})",
+        id,
+        user.email,
+        my_key.permission_level
+    );
+
+    // 4. Return updated document
+    Ok(ApiResponse::success(DocumentResponse {
+        id: updated_doc.id,
+        encrypted_name: updated_doc.encrypted_name,
+        name_nonce: updated_doc.name_nonce,
+        content_nonce: updated_doc.content_nonce,
+        mime_type: updated_doc.mime_type,
+        size: updated_doc.size,
+        content_hash: updated_doc.content_hash,
+        permission_level: permission_to_string(my_key.permission_level),
+        created_at: updated_doc.created_at,
+        updated_at: updated_doc.updated_at,
+    }))
 }
 
 /// POST /api/v1/documents/:id/permissions

@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   File,
   Code,
+  Code2,
   LogOut,
   Upload,
   X,
@@ -30,7 +31,9 @@ import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { ShareModal } from '../components/ShareModal';
 import { PreviewModal } from '../components/PreviewModal';
+import { DocumentEditorModal } from '../components/DocumentEditorModal';
 import { apiService } from '../services/api';
+import { CryptoService } from '../services/crypto';
 
 export function DocumentsPage() {
   const navigate = useNavigate();
@@ -59,6 +62,9 @@ export function DocumentsPage() {
 
   // Preview modal state
   const [previewDocument, setPreviewDocument] = useState<any | null>(null);
+
+  // Editor modal state
+  const [editingDocument, setEditingDocument] = useState<any | null>(null);
 
   useEffect(() => {
     loadDocuments(1);
@@ -116,6 +122,77 @@ export function DocumentsPage() {
         encrypted_key: documentDetail.encrypted_key,
       });
     } catch (err: any) {
+      alert('获取文档信息失败：' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // 判断文件是否可编辑（文本文件）
+  const isTextFile = (mimeType: string): boolean => {
+    return (
+      mimeType.startsWith('text/') ||
+      mimeType === 'application/json' ||
+      mimeType === 'application/javascript' ||
+      mimeType === 'application/typescript' ||
+      mimeType === 'application/x-yaml' ||
+      mimeType === 'application/xml'
+    );
+  };
+
+  const handleEdit = async (doc: any) => {
+    try {
+      const { privateKey } = useAuthStore.getState();
+
+      if (!privateKey) {
+        alert('私钥未找到，请重新登录');
+        return;
+      }
+
+      // 获取文档详情（需要 encrypted_key）
+      const response = await apiService.getDocumentDetail(doc.id);
+      const documentDetail = response.data.data;
+
+      // 解密文件名以显示在编辑器中
+      const crypto = new CryptoService();
+
+      // 1. 用私钥解密 document key
+      const encryptedKeyBuffer = crypto.base64ToArrayBuffer(documentDetail.encrypted_key);
+      const documentKeyBuffer = await window.crypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        privateKey,
+        encryptedKeyBuffer
+      );
+
+      // 2. 导入 document key
+      const documentKey = await window.crypto.subtle.importKey(
+        'raw',
+        documentKeyBuffer,
+        'AES-GCM',
+        false,
+        ['decrypt']
+      );
+
+      // 3. 解密文件名
+      const nameNonceBuffer = crypto.base64ToArrayBuffer(doc.name_nonce);
+      const encryptedNameBuffer = crypto.base64ToArrayBuffer(doc.encrypted_name);
+
+      const decryptedNameBuffer = await window.crypto.subtle.decrypt(
+        {
+          name: 'AES-GCM',
+          iv: nameNonceBuffer,
+        },
+        documentKey,
+        encryptedNameBuffer
+      );
+
+      const decryptedName = new TextDecoder().decode(decryptedNameBuffer);
+
+      setEditingDocument({
+        ...doc,
+        encrypted_key: documentDetail.encrypted_key,
+        decrypted_name: decryptedName,
+      });
+    } catch (err: any) {
+      console.error('Edit error:', err);
       alert('获取文档信息失败：' + (err.response?.data?.message || err.message));
     }
   };
@@ -403,6 +480,19 @@ export function DocumentsPage() {
                           <Download className="w-3.5 h-3.5" />
                           <span>下载</span>
                         </button>
+                        {/* 编辑按钮 - Write/Owner 且文件可编辑 */}
+                        {(doc.permission_level === 'write' ||
+                          doc.permission_level === 'owner') &&
+                          isTextFile(doc.mime_type) && (
+                            <button
+                              onClick={() => handleEdit(doc)}
+                              className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg text-xs font-medium transition-colors"
+                              title="编辑内容"
+                            >
+                              <Code2 className="w-3.5 h-3.5" />
+                              <span>编辑</span>
+                            </button>
+                          )}
                         {doc.permission_level === 'owner' && (
                           <>
                             <button
@@ -468,6 +558,22 @@ export function DocumentsPage() {
           nameNonce={previewDocument.name_nonce}
           contentNonce={previewDocument.content_nonce}
           onClose={() => setPreviewDocument(null)}
+        />
+      )}
+
+      {/* Editor Modal */}
+      {editingDocument && (
+        <DocumentEditorModal
+          documentId={editingDocument.id}
+          fileName={editingDocument.decrypted_name}
+          encryptedKey={editingDocument.encrypted_key}
+          encryptedName={editingDocument.encrypted_name}
+          nameNonce={editingDocument.name_nonce}
+          contentNonce={editingDocument.content_nonce}
+          onClose={() => setEditingDocument(null)}
+          onSuccess={() => {
+            loadDocuments();
+          }}
         />
       )}
     </div>

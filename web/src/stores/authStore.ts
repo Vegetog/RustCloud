@@ -174,3 +174,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ error: null });
   },
 }));
+
+// Initialize: Check if we have tokens but no keys (page refresh scenario)
+// In zero-knowledge architecture, keys are in-memory only, so refresh = re-login
+const initState = useAuthStore.getState();
+if (initState.accessToken && !initState.privateKey) {
+  // Clear orphaned tokens
+  sessionStorage.removeItem('accessToken');
+  sessionStorage.removeItem('refreshToken');
+  useAuthStore.setState({
+    accessToken: null,
+    refreshToken: null,
+    isAuthenticated: false,
+  });
+  console.log('[Auth] Page refreshed: Keys lost, please re-login (zero-knowledge security)');
+}

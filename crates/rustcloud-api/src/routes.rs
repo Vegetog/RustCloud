@@ -2,7 +2,7 @@
 
 use axum::{
     middleware,
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use tower_http::compression::CompressionLayer;
@@ -42,6 +42,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/", get(handlers::document::list_documents))
         .route("/", post(handlers::document::upload_document))
         .route("/:id", get(handlers::document::get_document))
+        .route("/:id", patch(handlers::document::update_document))
         .route("/:id/download", get(handlers::document::download_document))
         .route("/:id", delete(handlers::document::delete_document))
         .route("/:id/permissions", get(handlers::document::list_permissions))
@@ -57,11 +58,16 @@ pub fn create_router(state: AppState) -> Router {
         .route("/", get(handlers::share::list_shares))
         .route("/:id", delete(handlers::share::delete_share));
 
+    // Protected storage routes
+    let storage_routes = Router::new()
+        .route("/upload", post(handlers::storage::upload_file));
+
     // Combine protected routes with auth middleware
     let protected_routes = Router::new()
         .nest("/auth", protected_auth_routes)
         .nest("/documents", document_routes)
         .nest("/shares", protected_share_routes)
+        .nest("/storage", storage_routes)
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
