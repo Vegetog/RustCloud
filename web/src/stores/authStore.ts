@@ -1,5 +1,6 @@
 // AuthStore: Authentication state management using Zustand
-// Manages user authentication, JWT tokens, and cryptographic keys (in-memory only)
+// Manages user authentication, JWT tokens, and cryptographic keys
+// Keys are persisted in sessionStorage for page refresh support (cleared on browser close)
 
 import { create } from 'zustand';
 import type { User } from '../types/auth';
@@ -12,8 +13,8 @@ interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
-  masterKey: CryptoKey | null; // NEVER persisted, in-memory only
-  privateKey: CryptoKey | null; // NEVER persisted, in-memory only
+  masterKey: CryptoKey | null; // Persisted in sessionStorage (JWK format)
+  privateKey: CryptoKey | null; // Persisted in sessionStorage (JWK format)
   publicKey: CryptoKey | null;
   loading: boolean;
   error: string | null;
@@ -60,13 +61,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         masterKey
       );
 
-      // 4. Import public key
+      // 4. Import public key (extractable: true for session persistence)
       const publicKeyBuffer = crypto.base64ToArrayBuffer(data.user.public_key);
       const publicKey = await window.crypto.subtle.importKey(
         'spki',
         publicKeyBuffer,
         { name: 'RSA-OAEP', hash: 'SHA-256' },
-        false,
+        true,
         ['encrypt']
       );
 
@@ -74,7 +75,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       sessionStorage.setItem('accessToken', data.access_token);
       sessionStorage.setItem('refreshToken', data.refresh_token);
 
-      // 6. Update state
+      // 6. Export and save keys to sessionStorage for persistence across refresh
+      const privateKeyJwk = await window.crypto.subtle.exportKey('jwk', privateKey);
+      const publicKeyJwk = await window.crypto.subtle.exportKey('jwk', publicKey);
+      const masterKeyRaw = await window.crypto.subtle.exportKey('raw', masterKey);
+      sessionStorage.setItem('privateKeyJwk', JSON.stringify(privateKeyJwk));
+      sessionStorage.setItem('publicKeyJwk', JSON.stringify(publicKeyJwk));
+      sessionStorage.setItem('masterKeyRaw', crypto.arrayBufferToBase64(masterKeyRaw));
+      sessionStorage.setItem('user', JSON.stringify(data.user));
+
+      // 7. Update state
       set({
         isAuthenticated: true,
         user: data.user,
@@ -151,9 +161,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Send logout request (fire and forget)
     apiService.logout().catch(() => {});
 
-    // Clear tokens from sessionStorage
+    // Clear all from sessionStorage (tokens + keys)
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('privateKeyJwk');
+    sessionStorage.removeItem('publicKeyJwk');
+    sessionStorage.removeItem('masterKeyRaw');
+    sessionStorage.removeItem('user');
 
     // Clear all state (including in-memory keys)
     set({
@@ -175,17 +189,85 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
-// Initialize: Check if we have tokens but no keys (page refresh scenario)
-// In zero-knowledge architecture, keys are in-memory only, so refresh = re-login
-const initState = useAuthStore.getState();
-if (initState.accessToken && !initState.privateKey) {
-  // Clear orphaned tokens
-  sessionStorage.removeItem('accessToken');
-  sessionStorage.removeItem('refreshToken');
-  useAuthStore.setState({
-    accessToken: null,
-    refreshToken: null,
-    isAuthenticated: false,
-  });
-  console.log('[Auth] Page refreshed: Keys lost, please re-login (zero-knowledge security)');
+// Initialize: Restore keys from sessionStorage on page refresh
+async function initializeAuth() {
+  const initState = useAuthStore.getState();
+
+  // Check if we have tokens and stored keys
+  if (initState.accessToken && !initState.privateKey) {
+    const privateKeyJwkStr = sessionStorage.getItem('privateKeyJwk');
+    const publicKeyJwkStr = sessionStorage.getItem('publicKeyJwk');
+    const masterKeyRawStr = sessionStorage.getItem('masterKeyRaw');
+    const userStr = sessionStorage.getItem('user');
+
+    if (privateKeyJwkStr && publicKeyJwkStr && masterKeyRawStr && userStr) {
+      try {
+        const crypto = new CryptoService();
+
+        // Restore private key
+        const privateKeyJwk = JSON.parse(privateKeyJwkStr);
+        const privateKey = await window.crypto.subtle.importKey(
+          'jwk',
+          privateKeyJwk,
+          { name: 'RSA-OAEP', hash: 'SHA-256' },
+          true,
+          ['decrypt']
+        );
+
+        // Restore public key
+        const publicKeyJwk = JSON.parse(publicKeyJwkStr);
+        const publicKey = await window.crypto.subtle.importKey(
+          'jwk',
+          publicKeyJwk,
+          { name: 'RSA-OAEP', hash: 'SHA-256' },
+          true,
+          ['encrypt']
+        );
+
+        // Restore master key
+        const masterKeyRaw = crypto.base64ToArrayBuffer(masterKeyRawStr);
+        const masterKey = await window.crypto.subtle.importKey(
+          'raw',
+          masterKeyRaw,
+          { name: 'AES-GCM', length: 256 },
+          true,
+          ['encrypt', 'decrypt']
+        );
+
+        // Restore user
+        const user = JSON.parse(userStr);
+
+        // Update state
+        useAuthStore.setState({
+          isAuthenticated: true,
+          user,
+          masterKey,
+          privateKey,
+          publicKey,
+        });
+
+        console.log('[Auth] Session restored from sessionStorage');
+        return;
+      } catch (error) {
+        console.error('[Auth] Failed to restore session:', error);
+      }
+    }
+
+    // If restoration failed, clear everything
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('privateKeyJwk');
+    sessionStorage.removeItem('publicKeyJwk');
+    sessionStorage.removeItem('masterKeyRaw');
+    sessionStorage.removeItem('user');
+    useAuthStore.setState({
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
+    });
+    console.log('[Auth] Session restoration failed, please re-login');
+  }
 }
+
+// Run initialization
+initializeAuth();

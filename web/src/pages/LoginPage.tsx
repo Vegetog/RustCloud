@@ -166,10 +166,10 @@ export function LoginPage() {
               <div className="text-xs text-blue-900">
                 <p className="font-medium mb-1">零知识加密保证</p>
                 <p className="text-blue-700 mb-2">
-                  您的主密钥和私钥仅存储在内存中，永不发送到服务器。所有文件在客户端加密，服务器无法访问您的数据。
+                  您的密钥永不发送到服务器。所有文件在客户端加密，服务器无法访问您的数据。
                 </p>
                 <p className="text-blue-600 text-[11px]">
-                  ⚠️ 刷新页面或关闭浏览器将清除内存中的密钥，需要重新登录才能访问文件。这是零知识架构的安全保障。
+                  密钥存储在浏览器会话中，刷新页面后会自动恢复。关闭浏览器标签页后需要重新登录。
                 </p>
               </div>
             </div>

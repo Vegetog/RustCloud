@@ -79,7 +79,12 @@ export function PreviewModal({
         setLoading(false);
       } catch (err: any) {
         console.error('[Preview] Failed:', err);
-        setError(err.message || '预览失败');
+        // Check if it's a decryption error (likely due to content update)
+        if (err.name === 'OperationError' || err.message?.includes('decrypt')) {
+          setError('文件内容已更新，请关闭后刷新文档列表重试');
+        } else {
+          setError(err.message || '预览失败');
+        }
         setLoading(false);
       }
     }
@@ -93,7 +98,7 @@ export function PreviewModal({
         console.log('[Preview] Revoked Blob URL');
       }
     };
-  }, [documentId]);
+  }, [documentId, contentNonce, nameNonce, encryptedName, encryptedKey, mimeType, privateKey]);
 
   const renderPreview = () => {
     // 图片预览
@@ -199,10 +204,26 @@ export function PreviewModal({
               </div>
             </div>
           ) : error ? (
-            <div className="text-center">
-              <div className="text-red-600 text-4xl mb-4">❌</div>
-              <div className="text-lg font-medium text-red-600 mb-2">预览失败</div>
-              <div className="text-sm text-red-500">{error}</div>
+            <div className="text-center max-w-md">
+              {error.includes('已更新') ? (
+                <>
+                  <div className="text-amber-500 text-4xl mb-4">🔄</div>
+                  <div className="text-lg font-medium text-amber-600 mb-2">内容已更新</div>
+                  <div className="text-sm text-amber-600 mb-4">{error}</div>
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    关闭并刷新列表
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="text-red-600 text-4xl mb-4">❌</div>
+                  <div className="text-lg font-medium text-red-600 mb-2">预览失败</div>
+                  <div className="text-sm text-red-500">{error}</div>
+                </>
+              )}
             </div>
           ) : (
             renderPreview()

@@ -31,7 +31,7 @@ export class CryptoService {
       },
       passwordKey,
       { name: 'AES-GCM', length: 256 },
-      false, // Non-exportable for security
+      true, // Exportable for session persistence
       ['encrypt', 'decrypt']
     );
   }
@@ -106,12 +106,12 @@ export class CryptoService {
       encrypted.ciphertext
     );
 
-    // Import as CryptoKey
+    // Import as CryptoKey (extractable: true for session persistence)
     return crypto.subtle.importKey(
       'pkcs8',
       decrypted,
       { name: 'RSA-OAEP', hash: 'SHA-256' },
-      false, // Non-exportable for security
+      true, // Exportable for session persistence
       ['decrypt']
     );
   }
