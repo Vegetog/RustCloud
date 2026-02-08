@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, Save, Code2, AlertCircle } from 'lucide-react';
+import { X, Loader2, Save, Code2, AlertCircle, Lock } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { CryptoService } from '../services/crypto';
 import { apiService } from '../services/api';
@@ -33,6 +33,12 @@ export function DocumentEditorModal({
   const [originalContent, setOriginalContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Lock-related state
+  const [lockId, setLockId] = useState<string | null>(null);
+  const [version, setVersion] = useState<number>(0);
+  const [lockError, setLockError] = useState<string | null>(null);
+  const [isHeartbeatActive, setIsHeartbeatActive] = useState(false);
 
   // 验证必需参数
   if (!documentId || !fileName || !encryptedKey || !privateKey) {
@@ -80,8 +86,73 @@ export function DocumentEditorModal({
     return languageMap[ext || ''] || 'plaintext';
   };
 
-  // 加载文档内容
+  // 1. 获取编辑锁
   useEffect(() => {
+    async function acquireLock() {
+      try {
+        const response = await apiService.acquireLock(documentId);
+        const data = response.data.data;
+
+        if (data.locked) {
+          setLockId(data.lock_id!);
+          setVersion(data.version!);
+          setIsHeartbeatActive(true);
+        } else {
+          setLockError(`文档正在被 ${data.locked_by} 编辑（${data.locked_at}）`);
+          setLoading(false);
+        }
+      } catch (err: any) {
+        console.error('Failed to acquire lock:', err);
+
+        // 处理 409 锁冲突 - 提取锁持有者信息
+        if (err.response?.status === 409) {
+          const data = err.response.data?.data;
+          if (data?.locked_by) {
+            setLockError(`文档正在被 ${data.locked_by} 编辑`);
+          } else {
+            setLockError('文档正在被其他用户编辑');
+          }
+        } else {
+          setLockError('获取编辑锁失败：' + (err.response?.data?.error?.message || err.message || '未知错误'));
+        }
+        setLoading(false);
+      }
+    }
+
+    acquireLock();
+  }, [documentId]);
+
+  // 2. 心跳续期（每10秒）
+  useEffect(() => {
+    if (!isHeartbeatActive || !lockId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        await apiService.extendLock(documentId, lockId);
+      } catch (err) {
+        console.error('Heartbeat failed:', err);
+        setLockError('连接丢失 - 您的更改可能无法保存');
+        setLockId(null);  // 清除锁ID，避免两条消息同时显示
+        setIsHeartbeatActive(false);
+      }
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(interval);
+  }, [isHeartbeatActive, lockId, documentId]);
+
+  // 3. 卸载时释放锁
+  useEffect(() => {
+    return () => {
+      if (lockId) {
+        apiService.releaseLock(documentId, lockId).catch(console.error);
+      }
+    };
+  }, [lockId, documentId]);
+
+  // 4. 加载文档内容（仅在获取锁后）
+  useEffect(() => {
+    if (!lockId) return; // Wait for lock to be acquired
+
     async function loadContent() {
       try {
         setLoading(true);
@@ -124,7 +195,7 @@ export function DocumentEditorModal({
     }
 
     loadContent();
-  }, [documentId, encryptedKey, encryptedName, nameNonce, contentNonce, privateKey]);
+  }, [lockId, documentId, encryptedKey, encryptedName, nameNonce, contentNonce, privateKey]);
 
   // 检测内容变化
   useEffect(() => {
@@ -133,6 +204,12 @@ export function DocumentEditorModal({
 
   // 保存文档
   const handleSave = async () => {
+    // Verify lock status
+    if (!lockId) {
+      setError('无编辑锁 - 无法保存');
+      return;
+    }
+
     if (!hasChanges) {
       setError('内容未修改');
       return;
@@ -191,12 +268,14 @@ export function DocumentEditorModal({
       );
       const contentHash = crypto.arrayBufferToBase64(hashBuffer);
 
-      // 7. 更新文档元数据（不更新 encrypted_key，保持所有用户都能访问）
+      // 7. 更新文档元数据（包含锁和版本信息）
       await apiService.updateDocument(documentId, {
         content_nonce: crypto.arrayBufferToBase64(newContentNonce.buffer as ArrayBuffer),
         content_hash: contentHash,
         storage_path: newStoragePath,
         size: blob.size,
+        expected_version: version,
+        lock_id: lockId,
       });
 
       // 8. 成功
@@ -204,9 +283,16 @@ export function DocumentEditorModal({
       onClose();
     } catch (err: any) {
       console.error('Failed to save document:', err);
-      setError(
-        '保存失败：' + (err.response?.data?.message || err.message || '未知错误')
-      );
+
+      // Handle conflicts
+      if (err.response?.status === 409) {
+        const msg = err.response.data?.error?.message || '文档已被他人修改';
+        setError(`保存冲突：${msg}。请刷新后重试。`);
+      } else {
+        setError(
+          '保存失败：' + (err.response?.data?.error?.message || err.message || '未知错误')
+        );
+      }
       setSaving(false);
     }
   };
@@ -226,7 +312,22 @@ export function DocumentEditorModal({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
+            {/* Lock status indicator */}
+            {lockId && (
+              <div className="flex items-center space-x-1.5 text-green-600 text-xs font-medium">
+                <Lock className="w-4 h-4" />
+                <span>已获取编辑锁</span>
+              </div>
+            )}
+
+            {lockError && (
+              <div className="flex items-center space-x-1.5 text-red-600 text-xs font-medium">
+                <AlertCircle className="w-4 h-4" />
+                <span>{lockError}</span>
+              </div>
+            )}
+
             {hasChanges && (
               <span className="text-xs text-amber-600 font-medium">
                 • 未保存

@@ -45,6 +45,9 @@ pub fn create_router(state: AppState) -> Router {
         .route("/:id", patch(handlers::document::update_document))
         .route("/:id/download", get(handlers::document::download_document))
         .route("/:id", delete(handlers::document::delete_document))
+        .route("/:id/lock", get(handlers::document_lock::acquire_lock))
+        .route("/:id/lock", delete(handlers::document_lock::release_lock))
+        .route("/:id/lock/heartbeat", post(handlers::document_lock::extend_lock))
         .route("/:id/permissions", get(handlers::document::list_permissions))
         .route("/:id/permissions", post(handlers::document::grant_permission))
         .route(

@@ -31,6 +31,15 @@ pub struct Model {
     /// MIME type
     pub mime_type: String,
 
+    /// Version number for optimistic locking
+    pub version: i64,
+
+    /// User ID who currently holds the editing lock (display only, actual lock in Redis)
+    pub locked_by: Option<Uuid>,
+
+    /// When the document was locked
+    pub locked_at: Option<DateTimeUtc>,
+
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }

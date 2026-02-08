@@ -64,6 +64,11 @@ pub struct DocumentResponse {
     pub mime_type: String,
     pub content_hash: String,
     pub permission_level: String,
+    pub version: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locked_by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locked_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -109,4 +114,11 @@ pub struct UpdateDocumentRequest {
     pub content_hash: Option<String>,
     pub storage_path: Option<String>,
     pub size: Option<i64>,
+
+    /// Expected version for optimistic locking
+    pub expected_version: i64,
+
+    /// Lock ID to verify lock ownership
+    #[validate(length(min = 1, message = "Lock ID is required"))]
+    pub lock_id: String,
 }

@@ -41,6 +41,7 @@ pub mod handlers;
 pub mod middleware;
 pub mod response;
 pub mod routes;
+pub mod services;
 pub mod state;
 
 // Re-export commonly used types
