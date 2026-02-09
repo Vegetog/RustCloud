@@ -189,6 +189,8 @@ class ApiService {
       content_hash?: string;
       storage_path?: string;
       size?: number;
+      expected_version?: number;
+      lock_id?: string;
     }
   ) {
     return this.client.patch<{
@@ -239,6 +241,42 @@ class ApiService {
         granted_at: string;
       }>;
     }>(`/documents/${docId}/permissions`);
+  }
+
+  // ===== Document Lock API =====
+
+  /**
+   * Acquire editing lock for a document
+   */
+  async acquireLock(docId: string) {
+    return this.client.get<{
+      success: boolean;
+      data: {
+        locked: boolean;
+        lock_id?: string;
+        version?: number;
+        locked_by?: string;
+        locked_at?: string;
+      };
+    }>(`/documents/${docId}/lock`);
+  }
+
+  /**
+   * Extend lock TTL (heartbeat)
+   */
+  async extendLock(docId: string, lockId: string) {
+    return this.client.post(`/documents/${docId}/lock/heartbeat`, {
+      lock_id: lockId,
+    });
+  }
+
+  /**
+   * Release editing lock
+   */
+  async releaseLock(docId: string, lockId: string) {
+    return this.client.delete(`/documents/${docId}/lock`, {
+      data: { lock_id: lockId },
+    });
   }
 
   // ===== Storage API =====

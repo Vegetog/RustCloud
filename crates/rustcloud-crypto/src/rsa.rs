@@ -84,6 +84,7 @@ pub fn decrypt_document_key(encrypted_key: &[u8], private_key_der: &[u8]) -> Res
 }
 
 /// Export public key as PEM format.
+#[allow(dead_code)]
 pub fn public_key_to_pem(public_key_der: &[u8]) -> Result<String> {
     let public_key = RsaPublicKey::from_public_key_der(public_key_der)
         .map_err(|e| Error::EncryptionFailed(format!("Invalid public key: {}", e)))?;

@@ -96,6 +96,9 @@ impl DocumentRepositoryTrait for DocumentRepository {
             storage_path: Set(data.storage_path),
             size: Set(data.size),
             mime_type: Set(data.mime_type),
+            version: Set(1), // Initial version
+            locked_by: Set(None),
+            locked_at: Set(None),
             created_at: Set(now),
             updated_at: Set(now),
         };
@@ -180,6 +183,15 @@ impl DocumentRepositoryTrait for DocumentRepository {
         if let Some(size) = data.size {
             model.size = Set(size);
         }
+        if let Some(version) = data.version {
+            model.version = Set(version);
+        }
+        if let Some(locked_by) = data.locked_by {
+            model.locked_by = Set(locked_by);
+        }
+        if let Some(locked_at) = data.locked_at {
+            model.locked_at = Set(locked_at);
+        }
         model.updated_at = Set(Utc::now());
 
         let result = model.update(&*self.db).await?;
@@ -211,6 +223,9 @@ mod tests {
             storage_path: "/path/to/file".to_string(),
             size: 1024,
             mime_type: "application/pdf".to_string(),
+            version: 1,
+            locked_by: None,
+            locked_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         }

@@ -77,6 +77,9 @@ pub async fn list_documents(
             mime_type: doc.mime_type,
             content_hash: doc.content_hash,
             permission_level,
+            version: doc.version,
+            locked_by: None, // Don't expose lock info in list view
+            locked_at: None,
             created_at: doc.created_at,
             updated_at: doc.updated_at,
         });
@@ -204,6 +207,9 @@ pub async fn upload_document(
         mime_type: doc.mime_type,
         content_hash: doc.content_hash,
         permission_level: "owner".to_string(),
+        version: doc.version,
+        locked_by: None,
+        locked_at: None,
         created_at: doc.created_at,
         updated_at: doc.updated_at,
     }))
@@ -244,6 +250,9 @@ pub async fn get_document(
             mime_type: doc.mime_type,
             content_hash: doc.content_hash,
             permission_level: permission_to_string(key.permission_level),
+            version: doc.version,
+            locked_by: None, // Don't expose user ID, only when acquiring lock
+            locked_at: doc.locked_at,
             created_at: doc.created_at,
             updated_at: doc.updated_at,
         },
@@ -383,7 +392,30 @@ pub async fn update_document(
         return Err(ApiError::forbidden("Read-only users cannot edit document"));
     }
 
-    // 3. Update document in database
+    // 3. Verify lock ownership
+    use crate::services::DocumentLockManager;
+    let lock_manager = DocumentLockManager::new(state.redis.clone());
+    let lock_info = lock_manager.get_lock_info(id).await
+        .map_err(|e| ApiError::internal(format!("Failed to get lock info: {}", e)))?;
+
+    if lock_info.is_none() || lock_info.unwrap().lock_id != req.lock_id {
+        return Err(ApiError::conflict("You don't own the editing lock"));
+    }
+
+    // 4. Verify version (optimistic locking)
+    let current_doc = doc_repo
+        .find_by_id(id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::not_found("Document"))?;
+
+    if current_doc.version != req.expected_version {
+        return Err(ApiError::conflict(
+            "Document was modified by another user. Please refresh and retry."
+        ));
+    }
+
+    // 5. Update document in database with version increment
     let update_data = UpdateDocument {
         encrypted_name: req.encrypted_name,
         name_nonce: req.name_nonce,
@@ -391,9 +423,15 @@ pub async fn update_document(
         content_hash: req.content_hash,
         storage_path: req.storage_path,
         size: req.size,
+        version: Some(current_doc.version + 1),
+        locked_by: Some(None), // Clear lock info
+        locked_at: Some(None),
     };
 
     let updated_doc = doc_repo.update(id, update_data).await.map_err(ApiError::from)?;
+
+    // 6. Release lock after successful save
+    lock_manager.release_lock(id, &req.lock_id).await.ok(); // Ignore release errors
 
     tracing::info!(
         "Document updated: {} by user {} ({:?})",
@@ -402,7 +440,7 @@ pub async fn update_document(
         my_key.permission_level
     );
 
-    // 4. Return updated document
+    // 7. Return updated document
     Ok(ApiResponse::success(DocumentResponse {
         id: updated_doc.id,
         encrypted_name: updated_doc.encrypted_name,
@@ -412,6 +450,9 @@ pub async fn update_document(
         size: updated_doc.size,
         content_hash: updated_doc.content_hash,
         permission_level: permission_to_string(my_key.permission_level),
+        version: updated_doc.version,
+        locked_by: None,
+        locked_at: None,
         created_at: updated_doc.created_at,
         updated_at: updated_doc.updated_at,
     }))

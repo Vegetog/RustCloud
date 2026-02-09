@@ -5,6 +5,7 @@ mod m20240101_000002_create_documents_table;
 mod m20240101_000003_create_document_keys_table;
 mod m20240101_000004_create_share_links_table;
 mod m20240117_000001_add_content_nonce;
+mod m20240204_000001_add_document_version;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240101_000003_create_document_keys_table::Migration),
             Box::new(m20240101_000004_create_share_links_table::Migration),
             Box::new(m20240117_000001_add_content_nonce::Migration),
+            Box::new(m20240204_000001_add_document_version::Migration),
         ]
     }
 }
