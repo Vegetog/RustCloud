@@ -1,0 +1,82 @@
+# RustCloud 工作空间配置
+# 这个文件定义了整个项目的结构和共享依赖
+
+[workspace]
+# 工作空间成员列表（所有子项目）
+members = [
+    "crates/rustcloud-core",
+    # "crates/rustcloud-crypto",      # 待实现
+    # "crates/rustcloud-storage",     # 待实现
+    # "crates/rustcloud-auth",        # 待实现
+    # "crates/rustcloud-database",    # 待实现
+    "crates/rustcloud-api",
+]
+
+# 使用 Rust 2021 edition 的依赖解析器
+resolver = "2"
+
+# 工作空间级别的共享依赖（避免重复定义）
+[workspace.dependencies]
+# 异步运行时
+tokio = { version = "1.35", features = ["full"] }
+
+# Web 框架
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
+
+# 序列化
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 通用工具
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1"
+anyhow = "1"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# 数据库
+sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros"] }
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-native-tls", "chrono", "uuid"] }
+
+# Redis
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+
+# 加密
+argon2 = "0.5"
+aes-gcm = "0.10"
+rsa = "0.9"
+sha2 = "0.10"
+rand = "0.8"
+
+# 对象存储
+aws-sdk-s3 = "1.13"
+aws-config = "1.1"
+
+# 环境变量
+dotenv = "0.15"
+
+# HTTP 客户端
+reqwest = { version = "0.11", features = ["json"] }
+
+# 开发依赖
+[workspace.dev-dependencies]
+# 测试框架
+tokio-test = "0.4"
+
+# 工作空间配置
+[profile.dev]
+# 开发模式：快速编译，未优化
+opt-level = 0
+debug = true
+
+[profile.release]
+# 发布模式：完全优化，去除调试信息
+opt-level = 3
+debug = false
+lto = true          # 链接时优化
+codegen-units = 1   # 单线程代码生成（更快的运行时）

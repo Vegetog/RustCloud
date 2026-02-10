@@ -1,0 +1,21 @@
+# rustcloud-core 模块配置
+# 这是一个库（library）模块，提供核心类型和错误处理
+
+[package]
+name = "rustcloud-core"           # 模块名称
+version = "0.1.0"                  # 版本号
+edition = "2021"                   # Rust 版本（2021 edition）
+
+# 依赖项（从工作空间继承）
+[dependencies]
+# 错误处理
+thiserror = { workspace = true }   # workspace = true 表示使用根 Cargo.toml 定义的版本
+anyhow = { workspace = true }
+
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# 工具
+uuid = { workspace = true }
+chrono = { workspace = true }
