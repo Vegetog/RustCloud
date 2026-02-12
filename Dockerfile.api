@@ -1,0 +1,55 @@
+# ============================================================
+# Stage 1: Chef - Cargo dependency caching layer
+# ============================================================
+FROM rust:1.83-bookworm AS chef
+RUN cargo install cargo-chef
+WORKDIR /app
+
+# ============================================================
+# Stage 2: Planner - Generate dependency recipe
+# ============================================================
+FROM chef AS planner
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ crates/
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ============================================================
+# Stage 3: Builder - Compile dependencies, then source
+# ============================================================
+FROM chef AS builder
+
+# Copy and cook dependencies (this layer is cached)
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# Copy actual source code and build
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ crates/
+RUN cargo build --release --bin rustcloud-api --bin migrate
+
+# ============================================================
+# Stage 4: Runtime - Minimal production image
+# ============================================================
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r rustcloud && useradd -r -g rustcloud -s /sbin/nologin rustcloud
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/rustcloud-api /app/rustcloud-api
+COPY --from=builder /app/target/release/migrate /app/migrate
+
+RUN chown -R rustcloud:rustcloud /app
+
+USER rustcloud
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/api/v1/health || exit 1
+
+CMD ["./rustcloud-api"]

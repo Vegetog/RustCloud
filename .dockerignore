@@ -1,0 +1,54 @@
+# Rust build artifacts
+target/
+*.pdb
+
+# Node.js
+web/node_modules/
+web/dist/
+web/build/
+
+# IDE
+.vscode/
+.idea/
+.helix/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Environment (secrets)
+.env
+.env.local
+.env.*.local
+.env.prod
+*.key
+*.pem
+credentials.json
+
+# Logs
+logs/
+*.log
+
+# Docker compose files (not needed inside images)
+docker-compose*.yml
+
+# Documentation
+*.md
+LICENSE
+
+# Claude
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dev scripts
+start-dev.sh
+stop-dev.sh
+.api.pid
+
+# Data directories
+data/

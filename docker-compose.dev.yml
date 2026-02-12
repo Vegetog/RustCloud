@@ -1,4 +1,7 @@
 services:
+  # =====================
+  # Infrastructure
+  # =====================
   postgres:
     image: postgres:14-alpine
     container_name: rustcloud-postgres
@@ -12,9 +15,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rustcloud -d rustcloud"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -25,9 +28,9 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   minio:
     image: minio/minio:latest
@@ -43,11 +46,10 @@ services:
       - minio_data:/data
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  # MinIO bucket initialization
   minio-init:
     image: minio/mc:latest
     container_name: rustcloud-minio-init
@@ -60,20 +62,111 @@ services:
       mc mb local/rustcloud --ignore-existing;
       echo 'Bucket rustcloud created successfully';
       "
+    restart: "no"
 
-  # Database Web UI (Adminer)
   adminer:
     image: adminer:latest
     container_name: rustcloud-adminer
     restart: unless-stopped
     ports:
-      - "8081:8080"  # 改为 8081 避免与 API 冲突
+      - "8081:8080"
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     depends_on:
       - postgres
 
+  # =====================
+  # Database Migration
+  # =====================
+  migration:
+    image: rust:1.83-bookworm
+    container_name: rustcloud-migration
+    working_dir: /app/crates/rustcloud-database/migration
+    volumes:
+      - .:/app
+      - cargo_registry:/usr/local/cargo/registry
+      - cargo_target:/app/target
+    environment:
+      DATABASE_URL: postgres://rustcloud:rustcloud_dev@postgres:5432/rustcloud
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: cargo run --bin migrate
+    restart: "no"
+
+  # =====================
+  # Backend API (cargo-watch hot reload)
+  # =====================
+  api:
+    image: rust:1.83-bookworm
+    container_name: rustcloud-api
+    working_dir: /app
+    volumes:
+      - .:/app
+      - cargo_registry:/usr/local/cargo/registry
+      - cargo_target:/app/target
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "8080"
+      DATABASE_URL: postgres://rustcloud:rustcloud_dev@postgres:5432/rustcloud
+      DATABASE_MAX_CONNECTIONS: "20"
+      DATABASE_MIN_CONNECTIONS: "5"
+      REDIS_URL: redis://redis:6379
+      STORAGE_BACKEND: minio
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_BUCKET: rustcloud
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      JWT_SECRET: dev-secret-key-at-least-32-bytes-long-for-development-only
+      JWT_ACCESS_TOKEN_TTL: "3600"
+      JWT_REFRESH_TOKEN_TTL: "604800"
+      ARGON2_MEMORY: "65536"
+      ARGON2_ITERATIONS: "3"
+      ARGON2_PARALLELISM: "4"
+      RUST_LOG: rustcloud=debug,tower_http=debug
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    command: >
+      bash -c "
+        cargo install cargo-watch --locked 2>/dev/null || true;
+        cargo watch -x 'run --bin rustcloud-api' -w crates/
+      "
+
+  # =====================
+  # Frontend (Vite dev server with HMR)
+  # =====================
+  web:
+    image: node:22-alpine
+    container_name: rustcloud-web
+    working_dir: /app
+    volumes:
+      - ./web:/app
+      - web_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE_URL: ""
+      VITE_APP_NAME: RustCloud
+      VITE_PROXY_TARGET: http://api:8080
+    depends_on:
+      - api
+    command: >
+      sh -c "
+        npm install &&
+        npm run dev -- --host 0.0.0.0
+      "
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  cargo_registry:
+  cargo_target:
+  web_node_modules:
