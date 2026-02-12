@@ -64,9 +64,10 @@ pub async fn list_documents(
             .await
             .map_err(ApiError::from)?;
 
-        let permission_level = key
-            .map(|k| permission_to_string(k.permission_level))
-            .unwrap_or_else(|| "none".to_string());
+        let (permission_level, encrypted_key) = match key {
+            Some(k) => (permission_to_string(k.permission_level), Some(k.encrypted_key)),
+            None => ("none".to_string(), None),
+        };
 
         documents.push(DocumentResponse {
             id: doc.id,
@@ -78,6 +79,7 @@ pub async fn list_documents(
             content_hash: doc.content_hash,
             permission_level,
             version: doc.version,
+            encrypted_key,
             locked_by: None, // Don't expose lock info in list view
             locked_at: None,
             created_at: doc.created_at,
@@ -208,6 +210,7 @@ pub async fn upload_document(
         content_hash: doc.content_hash,
         permission_level: "owner".to_string(),
         version: doc.version,
+        encrypted_key: None,
         locked_by: None,
         locked_at: None,
         created_at: doc.created_at,
@@ -251,6 +254,7 @@ pub async fn get_document(
             content_hash: doc.content_hash,
             permission_level: permission_to_string(key.permission_level),
             version: doc.version,
+            encrypted_key: None,
             locked_by: None, // Don't expose user ID, only when acquiring lock
             locked_at: doc.locked_at,
             created_at: doc.created_at,
@@ -451,6 +455,7 @@ pub async fn update_document(
         content_hash: updated_doc.content_hash,
         permission_level: permission_to_string(my_key.permission_level),
         version: updated_doc.version,
+        encrypted_key: None,
         locked_by: None,
         locked_at: None,
         created_at: updated_doc.created_at,

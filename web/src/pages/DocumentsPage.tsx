@@ -236,10 +236,10 @@ export function DocumentsPage() {
     return 'bg-slate-100 text-slate-500';
   };
 
-  const filteredDocuments = documents.filter(() => {
-    // For now, show all documents in "all" tab
-    // You can add filtering logic here for other tabs
-    return true;
+  const filteredDocuments = documents.filter((doc) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return doc.decrypted_name?.toLowerCase().includes(query);
   });
 
   return (
@@ -433,9 +433,9 @@ export function DocumentsPage() {
                         </div>
                       </div>
 
-                      {/* 文件名（加密显示） */}
-                      <h3 className="font-medium text-slate-700 text-sm truncate mb-1 font-mono">
-                        {doc.encrypted_name.substring(0, 20)}...
+                      {/* 文件名 */}
+                      <h3 className="font-medium text-slate-700 text-sm truncate mb-1" title={doc.decrypted_name}>
+                        {doc.decrypted_name || doc.encrypted_name.substring(0, 20) + '...'}
                       </h3>
 
                       {/* 文件信息 */}

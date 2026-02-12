@@ -128,7 +128,7 @@ class ApiService {
   /**
    * Get paginated list of documents
    */
-  async getDocuments(params?: { page?: number; pageSize?: number }) {
+  async getDocuments(params?: { page?: number; page_size?: number }) {
     return this.client.get<{ success: boolean; data: DocumentListResponse }>(
       '/documents',
       { params }

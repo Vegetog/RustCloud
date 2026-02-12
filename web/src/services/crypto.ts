@@ -302,6 +302,46 @@ export class CryptoService {
   }
 
   /**
+   * Decrypt a file name only (without downloading the full content)
+   *
+   * @param encryptedName - Encrypted file name (base64)
+   * @param nameNonce - Nonce for name encryption (base64)
+   * @param encryptedKey - Encrypted document key (base64)
+   * @param privateKey - User's RSA private key
+   * @returns Decrypted file name
+   */
+  async decryptFileName(
+    encryptedName: string,
+    nameNonce: string,
+    encryptedKey: string,
+    privateKey: CryptoKey
+  ): Promise<string> {
+    const encryptedKeyBuffer = this.base64ToArrayBuffer(encryptedKey);
+    const documentKey = await crypto.subtle.decrypt(
+      { name: 'RSA-OAEP' },
+      privateKey,
+      encryptedKeyBuffer
+    );
+
+    const aesKey = await crypto.subtle.importKey(
+      'raw',
+      documentKey,
+      'AES-GCM',
+      false,
+      ['decrypt']
+    );
+
+    const nameNonceBuffer = this.base64ToArrayBuffer(nameNonce);
+    const nameBuffer = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(nameNonceBuffer) },
+      aesKey,
+      this.base64ToArrayBuffer(encryptedName)
+    );
+
+    return new TextDecoder().decode(nameBuffer);
+  }
+
+  /**
    * Convert ArrayBuffer to Base64 string
    *
    * @param buffer - ArrayBuffer to convert

@@ -38,6 +38,15 @@ docker-compose -f docker-compose.dev.yml ps
 
 echo ""
 
+# 1.5. 执行数据库迁移
+echo -e "${BLUE}🗄️  步骤 1.5/3: 执行数据库迁移...${NC}"
+(cd crates/rustcloud-database/migration && DATABASE_URL=postgres://rustcloud:rustcloud_dev@localhost:5432/rustcloud cargo run 2>&1) || {
+    echo -e "${RED}❌ 数据库迁移失败，请检查数据库连接${NC}"
+    exit 1
+}
+echo -e "${GREEN}✓ 数据库迁移完成${NC}"
+echo ""
+
 # 2. 启动后端 API 服务
 echo -e "${BLUE}🦀 步骤 2/3: 启动后端 API 服务...${NC}"
 

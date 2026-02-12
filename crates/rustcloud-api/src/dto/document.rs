@@ -66,6 +66,8 @@ pub struct DocumentResponse {
     pub permission_level: String,
     pub version: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub encrypted_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub locked_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locked_at: Option<DateTime<Utc>>,

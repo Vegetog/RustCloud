@@ -100,7 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error('Login failed:', error);
       set({
         loading: false,
-        error: error.response?.data?.message || '登录失败，请检查邮箱和密码',
+        error: error.response?.data?.error?.message || '登录失败，请检查邮箱和密码',
       });
       throw error;
     }
@@ -150,7 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error('Registration failed:', error);
       set({
         loading: false,
-        error: error.response?.data?.message || '注册失败，请稍后重试',
+        error: error.response?.data?.error?.message || '注册失败，请稍后重试',
       });
       throw error;
     }

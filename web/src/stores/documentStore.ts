@@ -40,11 +40,35 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const response = await apiService.getDocuments({ page, pageSize: 20 });
+      const response = await apiService.getDocuments({ page, page_size: 20 });
       const data = response.data.data;
 
+      // Decrypt filenames client-side
+      const privateKey = useAuthStore.getState().privateKey;
+      let documents = data.documents;
+
+      if (privateKey) {
+        const crypto = new CryptoService();
+        documents = await Promise.all(
+          data.documents.map(async (doc: any) => {
+            if (!doc.encrypted_key) return doc;
+            try {
+              const decrypted_name = await crypto.decryptFileName(
+                doc.encrypted_name,
+                doc.name_nonce,
+                doc.encrypted_key,
+                privateKey
+              );
+              return { ...doc, decrypted_name };
+            } catch {
+              return doc;
+            }
+          })
+        );
+      }
+
       set({
-        documents: data.documents,
+        documents,
         total: data.total,
         page: data.page,
         pageSize: data.page_size,
@@ -53,7 +77,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     } catch (error: any) {
       console.error('Failed to load documents:', error);
       set({
-        error: error.response?.data?.message || '加载文档列表失败',
+        error: error.response?.data?.error?.message || '加载文档列表失败',
         loading: false,
       });
     }
@@ -103,7 +127,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     } catch (error: any) {
       console.error('Failed to upload document:', error);
       set({
-        error: error.response?.data?.message || '文件上传失败',
+        error: error.response?.data?.error?.message || '文件上传失败',
         loading: false,
         uploadProgress: 0,
       });
@@ -176,10 +200,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
           } catch {
             // Failed to parse, use default message
           }
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
         } else if (error.response.data.error?.message) {
           errorMessage = error.response.data.error.message;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
         }
       } else if (error.message) {
         errorMessage = error.message;
@@ -200,7 +224,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     } catch (error: any) {
       console.error('Failed to delete document:', error);
       set({
-        error: error.response?.data?.message || '文件删除失败',
+        error: error.response?.data?.error?.message || '文件删除失败',
       });
       throw error;
     }

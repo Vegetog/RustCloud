@@ -9,6 +9,8 @@ export interface Document {
   mime_type: string;
   content_hash: string;
   permission_level: 'owner' | 'write' | 'read';
+  encrypted_key?: string;
+  decrypted_name?: string;
   created_at: string;
   updated_at: string;
 }
