@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   AlertCircle,
   Eye,
+  Info,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
@@ -73,6 +74,12 @@ export function DocumentsPage() {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 100 * 1024 * 1024) {
+      useDocumentStore.setState({ error: '文件大小超过 100MB 限制' });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     try {
       await uploadDocument(file);
@@ -330,14 +337,27 @@ export function DocumentsPage() {
           </div>
 
           {/* 上传按钮 */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/30 flex items-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus className="w-4 h-4" />
-            <span>上传文件</span>
-          </button>
+          <div className="relative group">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/30 flex items-center space-x-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus className="w-4 h-4" />
+              <span>上传文件</span>
+            </button>
+            <div className="absolute right-0 top-full mt-2 w-56 bg-slate-800 text-slate-200 text-xs rounded-lg p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <div className="flex items-center space-x-1.5 mb-1.5 text-slate-300 font-medium">
+                <Info className="w-3 h-3" />
+                <span>上传须知</span>
+              </div>
+              <ul className="space-y-1 text-slate-400">
+                <li>支持所有文件类型</li>
+                <li>单文件最大 100MB</li>
+                <li>文件将在本地加密后上传</li>
+              </ul>
+            </div>
+          </div>
           <input
             ref={fileInputRef}
             type="file"
@@ -406,6 +426,9 @@ export function DocumentsPage() {
                 <Plus className="w-4 h-4" />
                 <span>上传文件</span>
               </button>
+              <p className="text-slate-400 text-xs mt-4">
+                支持所有文件类型 · 单文件最大 100MB · 端到端加密
+              </p>
             </div>
           ) : (
             <>

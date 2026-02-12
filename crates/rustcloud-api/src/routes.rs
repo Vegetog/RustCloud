@@ -1,6 +1,7 @@
 //! Route configuration
 
 use axum::{
+    extract::DefaultBodyLimit,
     middleware,
     routing::{delete, get, patch, post},
     Router,
@@ -53,7 +54,8 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/:id/permissions/:user_id",
             delete(handlers::document::revoke_permission),
-        );
+        )
+        .layer(DefaultBodyLimit::max(100 * 1024 * 1024)); // 100MB
 
     // Protected share routes
     let protected_share_routes = Router::new()
@@ -63,7 +65,8 @@ pub fn create_router(state: AppState) -> Router {
 
     // Protected storage routes
     let storage_routes = Router::new()
-        .route("/upload", post(handlers::storage::upload_file));
+        .route("/upload", post(handlers::storage::upload_file))
+        .layer(DefaultBodyLimit::max(100 * 1024 * 1024)); // 100MB
 
     // Combine protected routes with auth middleware
     let protected_routes = Router::new()
