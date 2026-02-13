@@ -79,7 +79,7 @@ services:
   # Database Migration
   # =====================
   migration:
-    image: rust:1.83-bookworm
+    image: rust:1.93-bookworm
     container_name: rustcloud-migration
     working_dir: /app/crates/rustcloud-database/migration
     volumes:
@@ -98,7 +98,7 @@ services:
   # Backend API (cargo-watch hot reload)
   # =====================
   api:
-    image: rust:1.83-bookworm
+    image: rust:1.93-bookworm
     container_name: rustcloud-api
     working_dir: /app
     volumes:
