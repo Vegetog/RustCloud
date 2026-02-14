@@ -9,7 +9,7 @@ use aws_sdk_s3::{
 };
 use chrono::Utc;
 use rustcloud_core::error::{Error, Result};
-use sha2::{Digest, Sha256};
+use rustcloud_crypto::sha256_hash_hex;
 use tracing::{debug, info};
 
 use crate::traits::Storage;
@@ -83,19 +83,13 @@ impl MinioStorage {
         }
     }
 
-    /// Calculate SHA-256 hash
-    fn calculate_hash(content: &[u8]) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(content);
-        hex::encode(hasher.finalize())
-    }
 }
 
 #[async_trait]
 impl Storage for MinioStorage {
     async fn put(&self, path: &str, content: &[u8], content_type: &str) -> Result<StorageMetadata> {
         let body = ByteStream::from(content.to_vec());
-        let hash = Self::calculate_hash(content);
+        let hash = sha256_hash_hex(content);
 
         self.client
             .put_object()
@@ -146,7 +140,7 @@ impl Storage for MinioStorage {
             .map_err(|e| Error::StorageError(format!("Failed to read body: {}", e)))?
             .to_vec();
 
-        let hash = Self::calculate_hash(&content);
+        let hash = sha256_hash_hex(&content);
 
         let metadata = StorageMetadata::new(
             path.to_string(),

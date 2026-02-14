@@ -18,8 +18,6 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
 uuid = { workspace = true }
-sha2 = { workspace = true }
-hex = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

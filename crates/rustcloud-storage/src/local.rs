@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use rustcloud_core::error::{Error, Result};
-use sha2::{Digest, Sha256};
+use rustcloud_crypto::sha256_hash_hex;
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
@@ -55,12 +55,6 @@ impl LocalStorage {
         Ok(())
     }
 
-    /// Calculate SHA-256 hash
-    fn calculate_hash(content: &[u8]) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(content);
-        hex::encode(hasher.finalize())
-    }
 }
 
 #[async_trait]
@@ -106,7 +100,7 @@ impl Storage for LocalStorage {
             .await
             .map_err(|e| Error::StorageError(format!("Failed to finalize file: {}", e)))?;
 
-        let hash = Self::calculate_hash(content);
+        let hash = sha256_hash_hex(content);
 
         debug!("Stored file: {} ({} bytes)", path, content.len());
 
@@ -137,7 +131,7 @@ impl Storage for LocalStorage {
             .await
             .map_err(|e| Error::StorageError(format!("Failed to get metadata: {}", e)))?;
 
-        let hash = Self::calculate_hash(&content);
+        let hash = sha256_hash_hex(&content);
 
         let metadata = StorageMetadata {
             path: path.to_string(),

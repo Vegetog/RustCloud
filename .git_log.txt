@@ -1,5 +1,0 @@
-* c71dc72 (HEAD -> main) fix: 添加日志目录到 .gitignore
-* 41aad4b fix: 修复共享文档编辑后预览失败问题 & 实现会话持久化
-* 1f32528 feat: 添加文档在线编辑功能（Monaco Editor）
-* c369b95 feat: 添加文档预览功能和数据库管理界面
-* 7108844 feat: 添加用户指定分享功能
