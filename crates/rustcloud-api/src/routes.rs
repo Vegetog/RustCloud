@@ -1,4 +1,4 @@
-//! Route configuration
+//! 路由配置
 
 use axum::{
     extract::DefaultBodyLimit,
@@ -13,9 +13,9 @@ use crate::handlers;
 use crate::middleware::{auth_middleware, cors_layer};
 use crate::state::AppState;
 
-/// Create the application router with all routes configured
+/// 创建并配置完整路由的应用 Router
 pub fn create_router(state: AppState) -> Router {
-    // Public routes (no authentication required)
+    // 公开路由（无需认证）
     let public_auth_routes = Router::new()
         .route("/register", post(handlers::auth::register))
         .route("/login", post(handlers::auth::login))
@@ -29,7 +29,7 @@ pub fn create_router(state: AppState) -> Router {
             get(handlers::share::download_shared_document),
         );
 
-    // Protected auth routes
+    // 受保护的认证路由
     let protected_auth_routes = Router::new()
         .route("/logout", post(handlers::auth::logout))
         .route("/me", get(handlers::auth::me))
@@ -38,7 +38,7 @@ pub fn create_router(state: AppState) -> Router {
             get(handlers::auth::get_user_public_key),
         );
 
-    // Protected document routes
+    // 受保护的文档路由
     let document_routes = Router::new()
         .route("/", get(handlers::document::list_documents))
         .route("/", post(handlers::document::upload_document))
@@ -57,18 +57,18 @@ pub fn create_router(state: AppState) -> Router {
         )
         .layer(DefaultBodyLimit::max(100 * 1024 * 1024)); // 100MB
 
-    // Protected share routes
+    // 受保护的分享路由
     let protected_share_routes = Router::new()
         .route("/", post(handlers::share::create_share))
         .route("/", get(handlers::share::list_shares))
         .route("/:id", delete(handlers::share::delete_share));
 
-    // Protected storage routes
+    // 受保护的存储路由
     let storage_routes = Router::new()
         .route("/upload", post(handlers::storage::upload_file))
         .layer(DefaultBodyLimit::max(100 * 1024 * 1024)); // 100MB
 
-    // Combine protected routes with auth middleware
+    // 组合受保护路由并挂载认证中间件
     let protected_routes = Router::new()
         .nest("/auth", protected_auth_routes)
         .nest("/documents", document_routes)
@@ -79,21 +79,21 @@ pub fn create_router(state: AppState) -> Router {
             auth_middleware,
         ));
 
-    // Combine public routes
+    // 组合公开路由
     let public_routes = Router::new()
         .nest("/auth", public_auth_routes)
         .nest("/shares", public_share_routes);
 
-    // Health check route
+    // 健康检查路由
     let health_route = Router::new().route("/health", get(health_check));
 
-    // Combine all routes under /api/v1
+    // 合并所有路由到 /api/v1 路径下
     let api_routes = Router::new()
         .merge(public_routes)
         .merge(protected_routes)
         .merge(health_route);
 
-    // Build final router with middleware
+    // 构建带中间件的最终路由器
     Router::new()
         .nest("/api/v1", api_routes)
         .layer(CompressionLayer::new())
@@ -102,7 +102,7 @@ pub fn create_router(state: AppState) -> Router {
         .with_state(state)
 }
 
-/// Health check endpoint
+/// 健康检查接口
 async fn health_check() -> &'static str {
     "OK"
 }

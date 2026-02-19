@@ -65,7 +65,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on owner_id for user's documents lookup
+        // 创建 owner_id 索引，用于查询用户文档
         manager
             .create_index(
                 Index::create()
@@ -76,7 +76,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on created_at for sorting
+        // 创建 created_at 索引，用于排序
         manager
             .create_index(
                 Index::create()

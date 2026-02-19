@@ -1,4 +1,4 @@
-// ShareModal: Dialog for creating share links and granting user permissions
+// 分享弹窗：创建分享链接并授予用户权限
 
 import { useState, useEffect } from 'react';
 import {
@@ -38,7 +38,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
   const [activeTab, setActiveTab] = useState<ShareTab>('link');
   const [error, setError] = useState<string | null>(null);
 
-  // Link sharing state (existing)
+  // 链接分享状态（现有）
   const [loading, setLoading] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -49,14 +49,14 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
   const [useMaxAccess, setUseMaxAccess] = useState(false);
   const [maxAccessCount, setMaxAccessCount] = useState(10);
 
-  // User sharing state (new)
+  // 用户分享状态（新增）
   const [targetEmail, setTargetEmail] = useState('');
   const [permissionLevel, setPermissionLevel] = useState<'read' | 'write'>('read');
   const [grantingPermission, setGrantingPermission] = useState(false);
   const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // Load shared users when switching to user tab
+  // 切换到用户标签时加载已授权用户
   useEffect(() => {
     if (activeTab === 'user') {
       loadSharedUsers();
@@ -93,7 +93,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
     try {
       const crypto = new CryptoService();
 
-      // 1. Decrypt document key with user's private key
+      // 1. 用用户私钥解密文档密钥
       const encryptedKeyBuffer = crypto.base64ToArrayBuffer(encryptedKey);
       const documentKeyBuffer = await window.crypto.subtle.decrypt(
         { name: 'RSA-OAEP' },
@@ -101,13 +101,13 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
         encryptedKeyBuffer
       );
 
-      // 2. Convert document key to base64 for URL fragment
+      // 2. 将文档密钥转换为 base64 用于 URL 片段
       const documentKeyBase64 = crypto.arrayBufferToBase64(documentKeyBuffer);
 
-      // 3. Re-encrypt document key with user's public key (for API storage)
+      // 3. 用用户公钥重新加密文档密钥（用于 API 存储）
       const shareEncryptedKey = crypto.arrayBufferToBase64(encryptedKeyBuffer);
 
-      // 4. Calculate expiration time
+      // 4. 计算过期时间
       let expiresAt: string | null = null;
       if (useExpiration) {
         const expireDate = new Date();
@@ -115,7 +115,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
         expiresAt = expireDate.toISOString();
       }
 
-      // 5. Hash password if provided
+      // 5. 若提供密码则进行哈希处理
       let passwordHash: string | null = null;
       if (usePassword && password) {
         const encoder = new TextEncoder();
@@ -126,7 +126,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
           .join('');
       }
 
-      // 6. Create share link via API
+      // 6. 通过 API 创建分享链接
       const response = await apiService.createShare({
         document_id: documentId,
         encrypted_key: shareEncryptedKey,
@@ -137,7 +137,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
 
       const shareToken = response.data.data.access_token;
 
-      // 7. Generate share URL with document key in fragment (for zero-knowledge)
+      // 7. 生成含文档密钥 片段的分享链接（实现零知识）
       const shareUrl = `${window.location.origin}/share/${shareToken}#${documentKeyBase64}`;
 
       setShareLink(shareUrl);
@@ -161,28 +161,28 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
     try {
       const crypto = new CryptoService();
 
-      // 1. Get target user's public key
+      // 1. 获取目标用户的公钥
       const publicKeyResponse = await apiService.getUserPublicKey(targetEmail);
       const targetPublicKey = publicKeyResponse.data.data.public_key;
 
-      // 2. Re-encrypt document key for target user
+      // 2. 为目标用户重新加密文档密钥
       const reEncryptedKey = await crypto.reEncryptDocumentKey(
         encryptedKey,
         privateKey,
         targetPublicKey
       );
 
-      // 3. Grant permission
+      // 3. 授予权限
       await apiService.grantPermission(documentId, {
         user_email: targetEmail,
         permission_level: permissionLevel,
         encrypted_key: reEncryptedKey,
       });
 
-      // 4. Refresh user list
+      // 4. 刷新用户列表
       await loadSharedUsers();
 
-      // 5. Clear form
+      // 5. 清空表单
       setTargetEmail('');
       setPermissionLevel('read');
 
@@ -235,7 +235,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
           className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in zoom-in-95"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
+          {/* 头部 */}
           <div className="flex items-center justify-between p-6 border-b border-slate-200">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-emerald-100 rounded-lg">
@@ -254,7 +254,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
             </button>
           </div>
 
-          {/* Tab Navigation */}
+          {/* 标签导航 */}
           <div className="flex border-b border-slate-200">
             <button
               onClick={() => setActiveTab('link')}
@@ -280,7 +280,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
             </button>
           </div>
 
-          {/* Content */}
+          {/* 内容区 */}
           <div className="p-6">
             {activeTab === 'link' ? (
               <LinkSharingContent
@@ -317,7 +317,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
             )}
           </div>
 
-          {/* Footer */}
+          {/* 底部按钮 */}
           <div className="flex space-x-3 p-6 border-t border-slate-200">
             {activeTab === 'link' && !shareLink ? (
               <>
@@ -358,7 +358,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
   );
 }
 
-// Link Sharing Tab Component
+// 链接分享标签组件
 function LinkSharingContent({
   error,
   shareLink,
@@ -388,7 +388,7 @@ function LinkSharingContent({
 
       {!shareLink ? (
         <>
-          {/* Password Protection */}
+          {/* 密码保护 */}
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <input
@@ -414,7 +414,7 @@ function LinkSharingContent({
             )}
           </div>
 
-          {/* Expiration */}
+          {/* 有效期 */}
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <input
@@ -444,7 +444,7 @@ function LinkSharingContent({
             )}
           </div>
 
-          {/* Max Access Count */}
+          {/* 访问次数限制 */}
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <input
@@ -474,7 +474,7 @@ function LinkSharingContent({
             )}
           </div>
 
-          {/* Security Notice */}
+          {/* 安全提示 */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -556,7 +556,7 @@ function LinkSharingContent({
   );
 }
 
-// User Sharing Tab Component
+// 用户分享标签组件
 function UserSharingContent({
   error,
   targetEmail,
@@ -578,7 +578,7 @@ function UserSharingContent({
         </div>
       )}
 
-      {/* Email Input */}
+      {/* 邮箱输入 */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700">用户邮箱</label>
         <input
@@ -590,7 +590,7 @@ function UserSharingContent({
         />
       </div>
 
-      {/* Permission Level */}
+      {/* 权限级别 */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700">权限级别</label>
         <div className="flex space-x-3">
@@ -617,7 +617,7 @@ function UserSharingContent({
         </div>
       </div>
 
-      {/* Grant Button */}
+      {/* 授权按钮 */}
       <button
         onClick={onGrantPermission}
         disabled={!targetEmail || grantingPermission}
@@ -633,7 +633,7 @@ function UserSharingContent({
         )}
       </button>
 
-      {/* Shared Users List */}
+      {/* 已授权用户列表 */}
       <div className="space-y-3 border-t border-slate-200 pt-4">
         <h4 className="text-sm font-medium text-slate-700">已授权用户</h4>
 
@@ -676,7 +676,7 @@ function UserSharingContent({
         )}
       </div>
 
-      {/* Security Notice */}
+      {/* 安全提示 */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start space-x-3">
           <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />

@@ -1,4 +1,4 @@
-// Authentication-related TypeScript type definitions
+// 认证相关的 TypeScript 类型定义
 
 export interface User {
   id: string;

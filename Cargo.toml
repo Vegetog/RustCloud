@@ -17,31 +17,31 @@ authors = ["RustCloud Team"]
 license = "MIT"
 
 [workspace.dependencies]
-# Async Runtime
+# 异步运行时
 tokio = { version = "1", features = ["full"] }
 
-# Web Framework
+# Web 框架
 axum = { version = "0.7", features = ["macros", "multipart"] }
 axum-extra = { version = "0.9", features = ["typed-header"] }
 tower = { version = "0.5", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "compression-gzip", "limit"] }
 
-# Serialization
+# 序列化
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Database
+# 数据库
 sea-orm = { version = "1", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "mock"] }
 sea-orm-migration = { version = "1", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 
 # Redis
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 
-# Object Storage
+# 对象存储
 aws-sdk-s3 = "1"
 aws-config = "1"
 
-# Cryptography
+# 密码学
 argon2 = "0.5"
 aes-gcm = "0.10"
 rsa = { version = "0.9", features = ["sha2"] }
@@ -52,30 +52,30 @@ zeroize = { version = "1", features = ["derive"] }
 # JWT
 jsonwebtoken = "9"
 
-# Utilities
+# 工具
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 base64 = "0.22"
 hex = "0.4"
 
-# Error Handling
+# 错误处理
 thiserror = "2"
 anyhow = "1"
 
-# Logging
+# 日志
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
-# Configuration
+# 配置
 dotenvy = "0.15"
 
-# Validation
+# 校验
 validator = { version = "0.19", features = ["derive"] }
 
-# Testing
+# 测试
 tokio-test = "0.4"
 
-# Internal crates
+# 内部包
 rustcloud-core = { path = "crates/rustcloud-core" }
 rustcloud-crypto = { path = "crates/rustcloud-crypto" }
 rustcloud-storage = { path = "crates/rustcloud-storage" }

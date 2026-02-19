@@ -1,12 +1,12 @@
 # ============================================================
-# Stage 1: Chef - Cargo dependency caching layer
+# 阶段一：Chef - Cargo 依赖缓存层
 # ============================================================
 FROM rust:1.93-bookworm AS chef
 RUN cargo install cargo-chef
 WORKDIR /app
 
 # ============================================================
-# Stage 2: Planner - Generate dependency recipe
+# 阶段二：Planner - 生成依赖配方
 # ============================================================
 FROM chef AS planner
 COPY Cargo.toml Cargo.lock ./
@@ -14,21 +14,21 @@ COPY crates/ crates/
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ============================================================
-# Stage 3: Builder - Compile dependencies, then source
+# 阶段三：Builder - 编译依赖，然后编译源码
 # ============================================================
 FROM chef AS builder
 
-# Copy and cook dependencies (this layer is cached)
+# 复制并预构建依赖（此层会被缓存）
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
-# Copy actual source code and build
+# 复制源码并构建
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ crates/
 RUN cargo build --release --bin rustcloud-api --bin migrate
 
 # ============================================================
-# Stage 4: Runtime - Minimal production image
+# 阶段四：运行时 - 精简的生产镜像
 # ============================================================
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \

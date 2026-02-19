@@ -1,11 +1,11 @@
-//! Database-specific error types
+//! 数据库专用错误类型
 
 use thiserror::Error;
 
-/// Database operation result type
+/// 数据库操作结果类型
 pub type DbResult<T> = std::result::Result<T, DatabaseError>;
 
-/// Database-specific errors
+/// 数据库专用错误
 #[derive(Debug, Error)]
 pub enum DatabaseError {
     #[error("Record not found")]

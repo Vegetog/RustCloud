@@ -1,4 +1,4 @@
-//! Core data types
+//! 核心数据类型
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

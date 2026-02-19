@@ -1,13 +1,13 @@
-//! Authentication DTOs
+//! 认证 DTO
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-// ===== Requests =====
+// ===== 请求 =====
 
-/// User registration request
+/// 用户注册请求
 #[derive(Debug, Deserialize, Validate)]
 pub struct RegisterRequest {
     #[validate(email(message = "Invalid email format"))]
@@ -29,7 +29,7 @@ pub struct RegisterRequest {
     pub salt: String,
 }
 
-/// User login request
+/// 用户登录请求
 #[derive(Debug, Deserialize, Validate)]
 pub struct LoginRequest {
     #[validate(email(message = "Invalid email format"))]
@@ -39,13 +39,13 @@ pub struct LoginRequest {
     pub password: String,
 }
 
-/// Token refresh request
+/// 令牌刷新请求
 #[derive(Debug, Deserialize)]
 pub struct RefreshRequest {
     pub refresh_token: String,
 }
 
-/// Password change request
+/// 密码修改请求
 #[derive(Debug, Deserialize, Validate)]
 pub struct ChangePasswordRequest {
     #[validate(length(min = 1, message = "Current password is required"))]
@@ -67,9 +67,9 @@ pub struct ChangePasswordRequest {
     pub salt: String,
 }
 
-// ===== Responses =====
+// ===== 响应 =====
 
-/// User information response
+/// 用户信息响应
 #[derive(Debug, Serialize)]
 pub struct UserResponse {
     pub id: Uuid,
@@ -78,13 +78,13 @@ pub struct UserResponse {
     pub created_at: DateTime<Utc>,
 }
 
-/// Registration response
+/// 注册响应
 #[derive(Debug, Serialize)]
 pub struct RegisterResponse {
     pub user: UserResponse,
 }
 
-/// Login response
+/// 登录响应
 #[derive(Debug, Serialize)]
 pub struct LoginResponse {
     pub access_token: String,
@@ -92,13 +92,13 @@ pub struct LoginResponse {
     pub expires_in: i64,
     pub token_type: String,
     pub user: UserResponse,
-    /// Encrypted private key for client-side decryption
+    /// 用于客户端解密的加密私钥
     pub encrypted_private_key: String,
     pub private_key_nonce: String,
     pub salt: String,
 }
 
-/// Token refresh response
+/// 令牌刷新响应
 #[derive(Debug, Serialize)]
 pub struct RefreshResponse {
     pub access_token: String,
@@ -107,13 +107,13 @@ pub struct RefreshResponse {
     pub token_type: String,
 }
 
-/// Current user response (for GET /me)
+/// 当前用户响应（用于 GET /me）
 #[derive(Debug, Serialize)]
 pub struct MeResponse {
     pub user: UserResponse,
 }
 
-/// Public key response (for GET /users/:email/public-key)
+/// 公钥响应（用于 GET /users/:email/public-key）
 #[derive(Debug, Serialize)]
 pub struct PublicKeyResponse {
     pub user_id: Uuid,

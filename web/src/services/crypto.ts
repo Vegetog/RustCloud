@@ -1,16 +1,16 @@
-// CryptoService: Client-side encryption using Web Crypto API
-// This is the core module that implements zero-knowledge encryption
+// 加密服务：使用 Web Crypto API 实现客户端加密
+// 这是实现零知识加密的核心模块
 
 import type { EncryptedData, KeyPair, EncryptedDocument, DecryptedDocument } from '../types/crypto';
 
 export class CryptoService {
   /**
-   * Derive master key from password using PBKDF2
-   * Note: Browsers don't support Argon2, so we use PBKDF2 as an alternative
+   * 通过 PBKDF2 从密码派生主密钥
+   * 注意：浏览器不支持 Argon2，故使用 PBKDF2 作为替代方案
    *
-   * @param password - User's password
-   * @param salt - Random salt (32 bytes)
-   * @returns AES-256-GCM CryptoKey for encrypting/decrypting
+   * @param password - 用户密码
+   * @param salt - 随机盐值（32 字节）
+   * @returns 用于加密/解密的 AES-256-GCM CryptoKey
    */
   async deriveMasterKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
     const encoder = new TextEncoder();
@@ -26,31 +26,31 @@ export class CryptoService {
       {
         name: 'PBKDF2',
         salt: salt.buffer as ArrayBuffer,
-        iterations: 100000, // 100,000 iterations (~300-500ms on modern browsers)
+        iterations: 100000, // 100,000 次迭代（现代浏览器约耗时 300-500ms）
         hash: 'SHA-256',
       },
       passwordKey,
       { name: 'AES-GCM', length: 256 },
-      true, // Exportable for session persistence
+      true, // 可导出，用于会话持久化
       ['encrypt', 'decrypt']
     );
   }
 
   /**
-   * Generate RSA-2048 key pair
-   * Used for asymmetric encryption of document keys
+   * 生成 RSA-2048 密钥对
+   * 用于对文档密钥进行非对称加密
    *
-   * @returns KeyPair with public and private CryptoKeys
+   * @returns 包含公钥和私钥的 KeyPair
    */
   async generateKeyPair(): Promise<KeyPair> {
     const keyPair = await crypto.subtle.generateKey(
       {
         name: 'RSA-OAEP',
         modulusLength: 2048,
-        publicExponent: new Uint8Array([1, 0, 1]), // 65537
+        publicExponent: new Uint8Array([1, 0, 1]), // 公钥指数 65537
         hash: 'SHA-256',
       },
-      true, // Exportable
+      true, // 可导出
       ['encrypt', 'decrypt']
     );
 
@@ -61,24 +61,24 @@ export class CryptoService {
   }
 
   /**
-   * Encrypt private key with master key
-   * The private key is exported to PKCS8 format and encrypted with AES-GCM
+   * 使用主密钥加密私钥
+   * 私钥以 PKCS8 格式导出后使用 AES-GCM 加密
    *
-   * @param privateKey - RSA private key to encrypt
-   * @param masterKey - Master key derived from password
-   * @returns Encrypted data with ciphertext and nonce
+   * @param privateKey - 待加密的 RSA 私钥
+   * @param masterKey - 从密码派生的主密钥
+   * @returns 包含密文和随机数的加密数据
    */
   async encryptPrivateKey(
     privateKey: CryptoKey,
     masterKey: CryptoKey
   ): Promise<EncryptedData> {
-    // Export private key to PKCS8 format
+    // 将私钥导出为 PKCS8 格式
     const exported = await crypto.subtle.exportKey('pkcs8', privateKey);
 
-    // Generate random nonce (12 bytes for AES-GCM)
+    // 生成随机随机数（AES-GCM 使用 12 字节）
     const nonce = crypto.getRandomValues(new Uint8Array(12));
 
-    // Encrypt with AES-GCM
+    // 使用 AES-GCM 加密
     const ciphertext = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv: nonce },
       masterKey,
@@ -89,56 +89,56 @@ export class CryptoService {
   }
 
   /**
-   * Decrypt private key with master key
+   * 使用主密钥解密私钥
    *
-   * @param encrypted - Encrypted private key data
-   * @param masterKey - Master key derived from password
-   * @returns Decrypted RSA private key
+   * @param encrypted - 已加密的私钥数据
+   * @param masterKey - 从密码派生的主密钥
+   * @returns 解密后的 RSA 私钥
    */
   async decryptPrivateKey(
     encrypted: EncryptedData,
     masterKey: CryptoKey
   ): Promise<CryptoKey> {
-    // Decrypt with AES-GCM
+    // 使用 AES-GCM 解密
     const decrypted = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: encrypted.nonce.buffer as ArrayBuffer },
       masterKey,
       encrypted.ciphertext
     );
 
-    // Import as CryptoKey (extractable: true for session persistence)
+    // 导入为 CryptoKey（extractable: true 用于会话持久化）
     return crypto.subtle.importKey(
       'pkcs8',
       decrypted,
       { name: 'RSA-OAEP', hash: 'SHA-256' },
-      true, // Exportable for session persistence
+      true, // 可导出，用于会话持久化
       ['decrypt']
     );
   }
 
   /**
-   * Encrypt a document file
+   * 加密文档文件
    *
-   * Process:
-   * 1. Generate random document key (DEK)
-   * 2. Encrypt file content with DEK
-   * 3. Encrypt file name with DEK
-   * 4. Calculate content hash
-   * 5. Encrypt DEK with user's public key
-   * 6. Clear DEK from memory
+   * 处理流程：
+   * 1. 生成随机文档密钥（DEK）
+   * 2. 使用 DEK 加密文件内容
+   * 3. 使用 DEK 加密文件名
+   * 4. 计算内容哈希
+   * 5. 使用用户公钥加密 DEK
+   * 6. 清除内存中的 DEK
    *
-   * @param file - File to encrypt
-   * @param publicKey - User's RSA public key
-   * @returns Encrypted document data
+   * @param file - 待加密的文件
+   * @param publicKey - 用户的 RSA 公钥
+   * @returns 加密后的文档数据
    */
   async encryptDocument(
     file: File,
     publicKey: CryptoKey
   ): Promise<EncryptedDocument> {
-    // 1. Generate random document key (256 bits)
+    // 1. 生成随机文档密钥（256 位）
     const documentKey = crypto.getRandomValues(new Uint8Array(32));
 
-    // 2. Import as AES-GCM CryptoKey
+    // 2. 导入为 AES-GCM CryptoKey
     const aesKey = await crypto.subtle.importKey(
       'raw',
       documentKey,
@@ -147,10 +147,10 @@ export class CryptoService {
       ['encrypt']
     );
 
-    // 3. Read file content
+    // 3. 读取文件内容
     const fileContent = await file.arrayBuffer();
 
-    // 4. Encrypt file content
+    // 4. 加密文件内容
     const contentNonce = crypto.getRandomValues(new Uint8Array(12));
     const encryptedContent = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv: contentNonce.buffer },
@@ -158,7 +158,7 @@ export class CryptoService {
       fileContent
     );
 
-    // 5. Encrypt file name
+    // 5. 加密文件名
     const nameNonce = crypto.getRandomValues(new Uint8Array(12));
     const nameBytes = new TextEncoder().encode(file.name);
     const encryptedName = await crypto.subtle.encrypt(
@@ -167,20 +167,20 @@ export class CryptoService {
       nameBytes
     );
 
-    // 6. Calculate content hash (SHA-256 of encrypted content)
+    // 6. 计算内容哈希（加密内容的 SHA-256）
     const hashBuffer = await crypto.subtle.digest('SHA-256', encryptedContent);
     const contentHash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    // 7. Encrypt document key with public key
+    // 7. 使用公钥加密文档密钥
     const encryptedKey = await crypto.subtle.encrypt(
       { name: 'RSA-OAEP' },
       publicKey,
       documentKey
     );
 
-    // 8. Clear document key from memory
+    // 8. 清除内存中的文档密钥
     documentKey.fill(0);
 
     return {
@@ -194,20 +194,20 @@ export class CryptoService {
   }
 
   /**
-   * Decrypt a document
+   * 解密文档
    *
-   * Process:
-   * 1. Decrypt document key with private key
-   * 2. Decrypt file content
-   * 3. Decrypt file name
+   * 处理流程：
+   * 1. 使用私钥解密文档密钥
+   * 2. 解密文件内容
+   * 3. 解密文件名
    *
-   * @param encryptedContent - Encrypted file content
-   * @param encryptedName - Encrypted file name (base64)
-   * @param nameNonce - Nonce for name encryption (base64)
-   * @param contentNonce - Nonce for content encryption (base64)
-   * @param encryptedKey - Encrypted document key (base64)
-   * @param privateKey - User's RSA private key
-   * @returns Decrypted document with content and file name
+   * @param encryptedContent - 加密的文件内容
+   * @param encryptedName - 加密的文件名（base64）
+   * @param nameNonce - 文件名加密的随机数（base64）
+   * @param contentNonce - 内容加密的随机数（base64）
+   * @param encryptedKey - 加密的文档密钥（base64）
+   * @param privateKey - 用户的 RSA 私钥
+   * @returns 包含内容和文件名的解密文档
    */
   async decryptDocument(
     encryptedContent: ArrayBuffer,
@@ -217,7 +217,7 @@ export class CryptoService {
     encryptedKey: string,
     privateKey: CryptoKey
   ): Promise<DecryptedDocument> {
-    // 1. Decrypt document key with RSA private key
+    // 1. 使用 RSA 私钥解密文档密钥
     const encryptedKeyBuffer = this.base64ToArrayBuffer(encryptedKey);
     const documentKey = await crypto.subtle.decrypt(
       { name: 'RSA-OAEP' },
@@ -225,7 +225,7 @@ export class CryptoService {
       encryptedKeyBuffer
     );
 
-    // 2. Import document key as AES-GCM CryptoKey
+    // 2. 将文档密钥导入为 AES-GCM CryptoKey
     const aesKey = await crypto.subtle.importKey(
       'raw',
       documentKey,
@@ -234,7 +234,7 @@ export class CryptoService {
       ['decrypt']
     );
 
-    // 3. Decrypt file content
+    // 3. 解密文件内容
     const contentNonceBuffer = this.base64ToArrayBuffer(contentNonce);
     const content = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: contentNonceBuffer },
@@ -242,7 +242,7 @@ export class CryptoService {
       encryptedContent
     );
 
-    // 4. Decrypt file name
+    // 4. 解密文件名
     const nameNonceBuffer = this.base64ToArrayBuffer(nameNonce);
     const nameBuffer = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: new Uint8Array(nameNonceBuffer) },
@@ -255,22 +255,21 @@ export class CryptoService {
   }
 
   /**
-   * Re-encrypt document key for another user
-   * This enables zero-knowledge key sharing: the document key is decrypted
-   * with the grantor's private key, then re-encrypted with the grantee's public key.
-   * The server never sees the plaintext document key.
+   * 为其他用户重加密文档密钥
+   * 实现零知识密钥共享：文档密钥先用授权者私钥解密，再用被授权者公钥重新加密。
+   * 服务器始终无法获得明文文档密钥。
    *
-   * @param encryptedKey - Current encrypted document key (base64)
-   * @param grantorPrivateKey - Grantor's RSA private key
-   * @param granteePublicKeyBase64 - Grantee's public key (base64)
-   * @returns Re-encrypted document key (base64)
+   * @param encryptedKey - 当前加密的文档密钥（base64）
+   * @param grantorPrivateKey - 授权者的 RSA 私钥
+   * @param granteePublicKeyBase64 - 被授权者的公钥（base64）
+   * @returns 重新加密的文档密钥（base64）
    */
   async reEncryptDocumentKey(
     encryptedKey: string,
     grantorPrivateKey: CryptoKey,
     granteePublicKeyBase64: string
   ): Promise<string> {
-    // 1. Decrypt document key with grantor's private key
+    // 1. 使用授权者私钥解密文档密钥
     const encryptedKeyBuffer = this.base64ToArrayBuffer(encryptedKey);
     const dekBuffer = await crypto.subtle.decrypt(
       { name: 'RSA-OAEP' },
@@ -278,7 +277,7 @@ export class CryptoService {
       encryptedKeyBuffer
     );
 
-    // 2. Import grantee's public key
+    // 2. 导入被授权者的公钥
     const granteePublicKeyBuffer = this.base64ToArrayBuffer(granteePublicKeyBase64);
     const granteePublicKey = await crypto.subtle.importKey(
       'spki',
@@ -288,27 +287,27 @@ export class CryptoService {
       ['encrypt']
     );
 
-    // 3. Re-encrypt with grantee's public key
+    // 3. 使用被授权者公钥重新加密
     const reEncryptedKey = await crypto.subtle.encrypt(
       { name: 'RSA-OAEP' },
       granteePublicKey,
       dekBuffer
     );
 
-    // 4. Clear plaintext key from memory (security best practice)
+    // 4. 从内存中清除明文密钥（安全最佳实践）
     new Uint8Array(dekBuffer).fill(0);
 
     return this.arrayBufferToBase64(reEncryptedKey);
   }
 
   /**
-   * Decrypt a file name only (without downloading the full content)
+   * 仅解密文件名（无需下载完整内容）
    *
-   * @param encryptedName - Encrypted file name (base64)
-   * @param nameNonce - Nonce for name encryption (base64)
-   * @param encryptedKey - Encrypted document key (base64)
-   * @param privateKey - User's RSA private key
-   * @returns Decrypted file name
+   * @param encryptedName - 加密的文件名（base64）
+   * @param nameNonce - 文件名加密的随机数（base64）
+   * @param encryptedKey - 加密的文档密钥（base64）
+   * @param privateKey - 用户的 RSA 私钥
+   * @returns 解密后的文件名
    */
   async decryptFileName(
     encryptedName: string,
@@ -342,10 +341,10 @@ export class CryptoService {
   }
 
   /**
-   * Convert ArrayBuffer to Base64 string
+   * 将 ArrayBuffer 转换为 Base64 字符串
    *
-   * @param buffer - ArrayBuffer to convert
-   * @returns Base64 encoded string
+   * @param buffer - 待转换的 ArrayBuffer
+   * @returns Base64 编码字符串
    */
   arrayBufferToBase64(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
@@ -357,13 +356,13 @@ export class CryptoService {
   }
 
   /**
-   * Convert Base64 string to ArrayBuffer
+   * 将 Base64 字符串转换为 ArrayBuffer
    *
-   * @param base64 - Base64 encoded string
+   * @param base64 - Base64 编码字符串
    * @returns ArrayBuffer
    */
   base64ToArrayBuffer(base64: string): ArrayBuffer {
-    // Clean the base64 string: remove whitespace, newlines, etc.
+    // 清理 base64 字符串：移除空白字符、换行符等
     const cleanBase64 = base64.replace(/\s/g, '');
     const binary = atob(cleanBase64);
     const bytes = new Uint8Array(binary.length);
@@ -374,5 +373,5 @@ export class CryptoService {
   }
 }
 
-// Export singleton instance
+// 导出单例
 export const cryptoService = new CryptoService();

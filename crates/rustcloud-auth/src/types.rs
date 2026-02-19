@@ -1,21 +1,21 @@
-//! Authentication types
+//! 认证类型
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Token pair returned after successful authentication
+/// 认证成功后返回的令牌对
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenPair {
-    /// JWT access token
+    /// JWT 访问令牌
     pub access_token: String,
-    /// JWT refresh token
+    /// JWT 刷新令牌
     pub refresh_token: String,
-    /// Access token expiration time
+    /// 访问令牌过期时间
     pub access_expires_at: DateTime<Utc>,
-    /// Refresh token expiration time
+    /// 刷新令牌过期时间
     pub refresh_expires_at: DateTime<Utc>,
-    /// Token type (always "Bearer")
+    /// 令牌类型（固定为 "Bearer"）
     pub token_type: String,
 }
 
@@ -36,35 +36,35 @@ impl TokenPair {
     }
 }
 
-/// User information extracted from valid token
+/// 从有效令牌中提取的用户信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthenticatedUser {
-    /// User ID
+    /// 用户 ID
     pub id: Uuid,
-    /// User email
+    /// 用户邮箱
     pub email: String,
-    /// Token ID (jti)
+    /// 令牌 ID（jti）
     pub token_id: String,
 }
 
-/// Session information stored in Redis
+/// 存储在 Redis 中的会话信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
-    /// Session ID
+    /// 会话 ID
     pub id: String,
-    /// User ID
+    /// 用户 ID
     pub user_id: Uuid,
-    /// Current refresh token ID (jti)
+    /// 当前刷新令牌 ID（jti）
     pub refresh_token_id: String,
-    /// Token family for replay detection
+    /// 用于重放检测的令牌族
     pub token_family: String,
-    /// Client IP address
+    /// 客户端 IP 地址
     pub ip_address: String,
-    /// Client user agent
+    /// 客户端 User-Agent
     pub user_agent: String,
-    /// Session creation time
+    /// 会话创建时间
     pub created_at: DateTime<Utc>,
-    /// Last activity time
+    /// 最后活跃时间
     pub last_active_at: DateTime<Utc>,
 }
 
@@ -90,25 +90,25 @@ impl Session {
     }
 }
 
-/// Password validation result
+/// 密码校验结果
 #[derive(Debug, Clone)]
 pub struct PasswordValidation {
-    /// Whether the password meets all requirements
+    /// 密码是否满足所有要求
     pub is_valid: bool,
-    /// List of validation errors (empty if valid)
+    /// 校验错误列表（通过时为空）
     pub errors: Vec<PasswordError>,
 }
 
-/// Password validation error types
+/// 密码校验错误类型
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PasswordError {
-    /// Password is too short
+    /// 密码过短
     TooShort { min: usize, actual: usize },
-    /// Missing uppercase letter
+    /// 缺少大写字母
     MissingUppercase,
-    /// Missing lowercase letter
+    /// 缺少小写字母
     MissingLowercase,
-    /// Missing digit
+    /// 缺少数字
     MissingDigit,
 }
 
@@ -136,7 +136,7 @@ impl std::fmt::Display for PasswordError {
 }
 
 impl PasswordValidation {
-    /// Get all error messages as a single string
+    /// 将所有错误信息合并为单个字符串
     pub fn error_message(&self) -> String {
         self.errors
             .iter()

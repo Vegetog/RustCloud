@@ -1,4 +1,4 @@
-// LoginPage: User login with password-based key derivation
+// 登录页面：基于密码进行密钥派生
 
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -20,7 +20,7 @@ export function LoginPage() {
       await login(email, password);
       navigate('/documents');
     } catch (err) {
-      // Error is handled by the store
+      // 错误由 状态仓库处理
     }
   };
 
@@ -32,7 +32,7 @@ export function LoginPage() {
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-indigo-600/20 rounded-full blur-3xl"></div>
 
-        {/* Logo */}
+        {/* 标志 */}
         <div className="relative z-10 flex items-center space-x-3">
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
             <Cloud className="w-6 h-6 text-white" />

@@ -1,4 +1,4 @@
-//! MinIO/S3 object storage implementation
+//! MinIO/S3 对象存储实现
 
 use async_trait::async_trait;
 use aws_config::BehaviorVersion;
@@ -15,14 +15,14 @@ use tracing::{debug, info};
 use crate::traits::Storage;
 use crate::types::{MinioStorageConfig, StorageMetadata, StorageObject};
 
-/// MinIO/S3 storage implementation
+/// MinIO/S3 存储实现
 pub struct MinioStorage {
     client: Client,
     bucket: String,
 }
 
 impl MinioStorage {
-    /// Create a new MinioStorage instance
+    /// 创建新的 MinioStorage 实例
     pub async fn new(config: MinioStorageConfig) -> Result<Self> {
         let credentials = Credentials::new(
             &config.access_key,
@@ -43,7 +43,7 @@ impl MinioStorage {
             .region(Region::new(config.region.clone()))
             .endpoint_url(&endpoint)
             .credentials_provider(credentials)
-            .force_path_style(true) // Required for MinIO
+            .force_path_style(true) // MinIO 需要强制路径风格
             .build();
 
         let client = Client::from_conf(s3_config);
@@ -53,7 +53,7 @@ impl MinioStorage {
             bucket: config.bucket.clone(),
         };
 
-        // Ensure bucket exists
+        // 确保存储桶存在
         storage.ensure_bucket().await?;
 
         info!("MinioStorage connected to {}", endpoint);
@@ -61,7 +61,7 @@ impl MinioStorage {
         Ok(storage)
     }
 
-    /// Ensure the bucket exists, create if not
+    /// 确保存储桶存在，不存在则创建
     async fn ensure_bucket(&self) -> Result<()> {
         match self.client.head_bucket().bucket(&self.bucket).send().await {
             Ok(_) => {
@@ -254,13 +254,13 @@ impl Storage for MinioStorage {
 
 #[cfg(test)]
 mod tests {
-    // MinIO tests require a running MinIO instance
-    // These tests are marked as ignored by default
+    // MinIO 测试需要运行中的 MinIO 实例
+    // 这些测试默认标记为忽略
 
     use super::*;
 
     fn get_test_config() -> Option<MinioStorageConfig> {
-        // Only run if MinIO is configured
+        // 仅在配置了 MinIO 时运行
         std::env::var("STORAGE_ENDPOINT").ok()?;
         MinioStorageConfig::from_env()
     }
@@ -280,7 +280,7 @@ mod tests {
         let obj = storage.get(path).await.unwrap();
         assert_eq!(obj.content, content);
 
-        // Cleanup
+        // 清理
         storage.delete(path).await.unwrap();
     }
 }

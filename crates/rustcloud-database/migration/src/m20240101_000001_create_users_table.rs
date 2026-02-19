@@ -47,7 +47,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on email for login lookups
+        // 创建邮箱索引，用于登录查询
         manager
             .create_index(
                 Index::create()

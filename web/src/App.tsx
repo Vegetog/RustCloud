@@ -1,4 +1,4 @@
-// App.tsx: Main application component with routing
+// 主应用组件：包含路由配置
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage';

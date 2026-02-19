@@ -1,4 +1,4 @@
-//! Argon2id key derivation and password hashing
+//! Argon2id 密钥派生与密码哈希
 
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -8,20 +8,20 @@ use rustcloud_core::error::{Error, Result};
 
 use crate::keys::MasterKey;
 
-/// Derive a master key from password using Argon2id.
+/// 使用 Argon2id 从密码派生主密钥。
 ///
-/// # Arguments
-/// * `password` - User's password
-/// * `salt` - 32-byte random salt (must be stored for later key derivation)
+/// # 参数
+/// * `password` - 用户密码
+/// * `salt` - 32 字节随机盐值（必须保存以便后续密钥派生）
 ///
-/// # Returns
-/// * `MasterKey` - 256-bit derived key
+/// # 返回值
+/// * `MasterKey` - 256 位派生密钥
 pub fn derive_master_key(password: &str, salt: &[u8]) -> Result<MasterKey> {
     if salt.len() != 32 {
         return Err(Error::KeyDerivationFailed("Salt must be 32 bytes".into()));
     }
 
-    // Argon2id parameters: 64MB memory, 3 iterations, 4 parallelism
+    // Argon2id 参数：64MB 内存、3 次迭代、4 并行度
     let params = Params::new(65536, 3, 4, Some(32))
         .map_err(|e| Error::KeyDerivationFailed(e.to_string()))?;
 
@@ -35,12 +35,12 @@ pub fn derive_master_key(password: &str, salt: &[u8]) -> Result<MasterKey> {
     Ok(MasterKey::new(output))
 }
 
-/// Hash a password for storage using Argon2id.
-/// Returns a PHC format string that includes the salt.
+/// 使用 Argon2id 对密码进行哈希以便存储。
+/// 返回包含盐值的 PHC 格式字符串。
 pub fn hash_password(password: &str) -> Result<String> {
     let salt = SaltString::generate(&mut OsRng);
 
-    // Use moderate parameters for password hashing
+    // 使用适中参数进行密码哈希
     let params = Params::new(65536, 3, 4, None)
         .map_err(|e| Error::KeyDerivationFailed(e.to_string()))?;
 
@@ -53,13 +53,13 @@ pub fn hash_password(password: &str) -> Result<String> {
     Ok(hash.to_string())
 }
 
-/// Verify a password against a stored hash.
-/// Uses constant-time comparison to prevent timing attacks.
+/// 验证密码是否与存储的哈希匹配。
+/// 使用常量时间比较以防止时序攻击。
 pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
     let parsed_hash =
         PasswordHash::new(hash).map_err(|e| Error::KeyDerivationFailed(e.to_string()))?;
 
-    // Use default Argon2 for verification (parameters come from the hash)
+    // 使用默认 Argon2 进行验证（参数从哈希值中读取）
     let argon2 = Argon2::default();
 
     match argon2.verify_password(password.as_bytes(), &parsed_hash) {
@@ -79,7 +79,7 @@ mod tests {
         let key1 = derive_master_key("password", &salt).unwrap();
         let key2 = derive_master_key("password", &salt).unwrap();
 
-        // Same password + salt = same key
+        // 相同密码 + 盐值 = 相同密钥
         assert_eq!(key1.as_bytes(), key2.as_bytes());
     }
 
@@ -89,7 +89,7 @@ mod tests {
         let key1 = derive_master_key("password1", &salt).unwrap();
         let key2 = derive_master_key("password2", &salt).unwrap();
 
-        // Different passwords = different keys
+        // 不同密码 = 不同密钥
         assert_ne!(key1.as_bytes(), key2.as_bytes());
     }
 
@@ -100,7 +100,7 @@ mod tests {
         let key1 = derive_master_key("password", &salt1).unwrap();
         let key2 = derive_master_key("password", &salt2).unwrap();
 
-        // Different salts = different keys
+        // 不同盐值 = 不同密钥
         assert_ne!(key1.as_bytes(), key2.as_bytes());
     }
 

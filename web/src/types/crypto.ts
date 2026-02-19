@@ -1,8 +1,8 @@
-// Crypto-related TypeScript type definitions
+// 加密相关的 TypeScript 类型定义
 
 export interface EncryptedData {
   ciphertext: ArrayBuffer;
-  nonce: Uint8Array; // 12 bytes for AES-GCM
+  nonce: Uint8Array; // AES-GCM 使用 12 字节
 }
 
 export interface KeyPair {

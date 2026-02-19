@@ -1,4 +1,4 @@
-//! Document repository implementation
+//! 文档仓储实现
 
 use std::sync::Arc;
 
@@ -18,48 +18,48 @@ use crate::error::{DatabaseError, DbResult};
 use crate::pagination::Page;
 use crate::types::{CreateDocument, DocumentListParams, SortField, SortOrder, UpdateDocument};
 
-/// Document repository trait for dependency injection
+/// 文档仓储特征，用于依赖注入
 #[async_trait]
 pub trait DocumentRepositoryTrait: Send + Sync {
-    /// Create a new document
+    /// 创建新文档
     async fn create(&self, data: CreateDocument) -> DbResult<DocumentModel>;
 
-    /// Find document by ID
+    /// 根据 ID 查找文档
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<DocumentModel>>;
 
-    /// Find documents by owner with pagination
+    /// 根据所有者分页查询文档
     async fn find_by_owner(
         &self,
         owner_id: Uuid,
         params: DocumentListParams,
     ) -> DbResult<Page<DocumentModel>>;
 
-    /// Find documents accessible to user (owned + shared)
+    /// 查找用户可访问的文档（自有 + 共享）
     async fn find_accessible(
         &self,
         user_id: Uuid,
         params: DocumentListParams,
     ) -> DbResult<Page<DocumentModel>>;
 
-    /// Update document fields
+    /// 更新文档字段
     async fn update(&self, id: Uuid, data: UpdateDocument) -> DbResult<DocumentModel>;
 
-    /// Delete document by ID
+    /// 根据 ID 删除文档
     async fn delete(&self, id: Uuid) -> DbResult<()>;
 }
 
-/// Document repository implementation
+/// 文档仓储实现
 pub struct DocumentRepository {
     db: Arc<DatabaseConnection>,
 }
 
 impl DocumentRepository {
-    /// Create a new document repository
+    /// 创建新的文档仓储
     pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }
 
-    /// Apply sorting to query
+    /// 对查询应用排序
     fn apply_sort(
         query: sea_orm::Select<Document>,
         sort_by: &SortField,
@@ -96,7 +96,7 @@ impl DocumentRepositoryTrait for DocumentRepository {
             storage_path: Set(data.storage_path),
             size: Set(data.size),
             mime_type: Set(data.mime_type),
-            version: Set(1), // Initial version
+            version: Set(1), // 初始版本号
             locked_by: Set(None),
             locked_at: Set(None),
             created_at: Set(now),
@@ -121,10 +121,10 @@ impl DocumentRepositoryTrait for DocumentRepository {
 
         let query = Self::apply_sort(query, &params.sort_by, &params.sort_order);
 
-        // Get total count
+        // 获取总数
         let total = query.clone().count(&*self.db).await?;
 
-        // Apply pagination
+        // 应用分页
         let items = query
             .offset(params.offset())
             .limit(params.limit())
@@ -139,7 +139,7 @@ impl DocumentRepositoryTrait for DocumentRepository {
         user_id: Uuid,
         params: DocumentListParams,
     ) -> DbResult<Page<DocumentModel>> {
-        // Find documents where user has a key (owned + shared with user)
+        // 查找用户有密钥的文档（自有 + 已共享）
         let query = Document::find()
             .join(JoinType::InnerJoin, document::Relation::DocumentKeys.def())
             .filter(document_key::Column::UserId.eq(user_id));

@@ -1,6 +1,6 @@
-//! RustCloud Core Module
+//! RustCloud 核心模块
 //!
-//! Core types, error handling, and configuration management.
+//! 核心类型、错误处理与配置管理。
 
 pub mod config;
 pub mod error;

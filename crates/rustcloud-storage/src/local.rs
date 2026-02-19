@@ -1,4 +1,4 @@
-//! Local file system storage implementation
+//! 本地文件系统存储实现
 
 use async_trait::async_trait;
 use chrono::Utc;
@@ -12,15 +12,15 @@ use tracing::debug;
 use crate::traits::Storage;
 use crate::types::{LocalStorageConfig, StorageMetadata, StorageObject};
 
-/// Local file system storage
+/// 本地文件系统存储
 pub struct LocalStorage {
     config: LocalStorageConfig,
 }
 
 impl LocalStorage {
-    /// Create a new LocalStorage instance
+    /// 创建新的 LocalStorage 实例
     pub async fn new(config: LocalStorageConfig) -> Result<Self> {
-        // Ensure base directory exists
+        // 确保基础目录存在
         fs::create_dir_all(&config.base_path)
             .await
             .map_err(|e| Error::StorageError(format!("Failed to create storage directory: {}", e)))?;
@@ -29,11 +29,11 @@ impl LocalStorage {
         Ok(Self { config })
     }
 
-    /// Generate a hierarchical storage path
+    /// 生成分层存储路径
     fn generate_path(&self, key: &str) -> PathBuf {
         let mut path = self.config.base_path.clone();
 
-        // Create directory hierarchy based on key prefix
+        // 根据键前缀创建目录层级
         let chars: Vec<char> = key.chars().collect();
         for i in 0..self.config.directory_depth as usize {
             let start = i * 2;
@@ -47,7 +47,7 @@ impl LocalStorage {
         path
     }
 
-    /// Validate path to prevent directory traversal
+    /// 验证路径以防止目录穿越攻击
     fn validate_path(&self, path: &str) -> Result<()> {
         if path.contains("..") || path.starts_with('/') || path.starts_with('\\') {
             return Err(Error::ValidationError("Invalid path".into()));
@@ -62,7 +62,7 @@ impl Storage for LocalStorage {
     async fn put(&self, path: &str, content: &[u8], content_type: &str) -> Result<StorageMetadata> {
         self.validate_path(path)?;
 
-        // Check file size
+        // 检查文件大小
         if content.len() as u64 > self.config.max_file_size {
             return Err(Error::ValidationError(format!(
                 "File size exceeds limit: {} > {}",
@@ -73,14 +73,14 @@ impl Storage for LocalStorage {
 
         let file_path = self.generate_path(path);
 
-        // Create parent directories
+        // 创建父目录
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent)
                 .await
                 .map_err(|e| Error::StorageError(format!("Failed to create directory: {}", e)))?;
         }
 
-        // Write to temporary file first, then rename (atomic write)
+        // 先写入临时文件，再重命名（原子写入）
         let temp_path = file_path.with_extension("tmp");
 
         let mut file = fs::File::create(&temp_path)
@@ -95,7 +95,7 @@ impl Storage for LocalStorage {
             .await
             .map_err(|e| Error::StorageError(format!("Failed to sync file: {}", e)))?;
 
-        // Atomic rename
+        // 原子重命名
         fs::rename(&temp_path, &file_path)
             .await
             .map_err(|e| Error::StorageError(format!("Failed to finalize file: {}", e)))?;
@@ -138,7 +138,7 @@ impl Storage for LocalStorage {
             size: file_metadata.len(),
             content_type: "application/octet-stream".to_string(),
             hash,
-            created_at: Utc::now(), // Simplified; could use file timestamps
+            created_at: Utc::now(), // 简化处理；可改用文件时间戳
             modified_at: Utc::now(),
         };
 
@@ -185,7 +185,7 @@ impl Storage for LocalStorage {
         let base_path = &self.config.base_path;
         let mut results = Vec::new();
 
-        // Walk directory recursively
+        // 递归遍历目录
         async fn walk_dir(
             dir: PathBuf,
             base: &PathBuf,
@@ -206,18 +206,18 @@ impl Storage for LocalStorage {
                 if path.is_dir() {
                     Box::pin(walk_dir(path, base, prefix, results)).await?;
                 } else if path.is_file() {
-                    // Get relative path as key
+                    // 获取相对路径作为键
                     if let Ok(relative) = path.strip_prefix(base) {
                         let key = relative.to_string_lossy().replace('\\', "/");
 
-                        // Filter by prefix
+                        // 按前缀过滤
                         if key.starts_with(prefix) && !key.ends_with(".tmp") {
                             if let Ok(meta) = fs::metadata(&path).await {
                                 results.push(StorageMetadata {
                                     path: key,
                                     size: meta.len(),
                                     content_type: "application/octet-stream".to_string(),
-                                    hash: String::new(), // Hash not computed for listing
+                                    hash: String::new(), // 列表操作不计算哈希
                                     created_at: Utc::now(),
                                     modified_at: Utc::now(),
                                 });
@@ -253,7 +253,7 @@ impl Storage for LocalStorage {
             path: path.to_string(),
             size: meta.len(),
             content_type: "application/octet-stream".to_string(),
-            hash: String::new(), // Hash requires reading file
+            hash: String::new(), // 获取元数据时不读取文件内容，无法计算哈希
             created_at: Utc::now(),
             modified_at: Utc::now(),
         })
@@ -329,7 +329,7 @@ mod tests {
     async fn test_path_validation() {
         let (storage, _temp) = create_test_storage().await;
 
-        // Path traversal should fail
+        // 目录穿越路径应失败
         let result = storage.put("../escape.txt", b"bad", "text/plain").await;
         assert!(result.is_err());
 
@@ -342,7 +342,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = LocalStorageConfig {
             base_path: temp_dir.path().to_path_buf(),
-            max_file_size: 100, // Very small limit
+            max_file_size: 100, // 极小的限制用于测试
             directory_depth: 2,
         };
         let storage = LocalStorage::new(config).await.unwrap();

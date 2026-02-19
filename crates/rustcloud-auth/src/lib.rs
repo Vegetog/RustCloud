@@ -1,32 +1,32 @@
-//! RustCloud Auth Module
+//! RustCloud 认证模块
 //!
-//! JWT token management, password handling, and session management.
+//! JWT 令牌管理、密码处理和会话管理。
 //!
-//! # Features
+//! # 功能特性
 //!
-//! - JWT Access/Refresh token generation and verification
-//! - Token rotation with family tracking for replay detection
-//! - Redis-based session management with per-user limits
-//! - Password strength validation
-//! - Argon2id password hashing (via rustcloud-crypto)
+//! - JWT 访问令牌/刷新令牌的生成与验证
+//! - 带族跟踪的令牌轮换，用于重放检测
+//! - 基于 Redis 的会话管理，支持每用户数量限制
+//! - 密码强度验证
+//! - Argon2id 密码哈希（通过 rustcloud-crypto）
 //!
-//! # Example
+//! # 使用示例
 //!
 //! ```ignore
 //! use rustcloud_auth::{AuthConfig, JwtManager, validate_password_strength};
 //!
-//! // Create JWT manager
+//! // 创建 JWT 管理器
 //! let config = AuthConfig::from_app_config(&app_config);
 //! let jwt_manager = JwtManager::new(config)?;
 //!
-//! // Generate tokens
+//! // 生成令牌对
 //! let (token_pair, access_jti, refresh_jti) =
 //!     jwt_manager.generate_token_pair(user_id, email, &family)?;
 //!
-//! // Validate password strength
+//! // 验证密码强度
 //! let validation = validate_password_strength("Password123", 8);
 //! if !validation.is_valid {
-//!     println!("Password errors: {}", validation.error_message());
+//!     println!("密码错误: {}", validation.error_message());
 //! }
 //! ```
 
@@ -37,22 +37,22 @@ mod password;
 mod session;
 mod types;
 
-// Public exports - Configuration
+// 公开导出 - 配置
 pub use config::AuthConfig;
 
-// Public exports - JWT
+// 公开导出 - JWT
 pub use claims::{AccessTokenClaims, RefreshTokenClaims};
 pub use jwt::JwtManager;
 
-// Public exports - Session
+// 公开导出 - 会话
 pub use session::SessionManager;
 pub use types::{AuthenticatedUser, Session, TokenPair};
 
-// Public exports - Password
+// 公开导出 - 密码
 pub use password::{check_password, create_password_hash, validate_password_strength};
 pub use types::{PasswordError, PasswordValidation};
 
-// Re-export from rustcloud-crypto for convenience
+// 从 rustcloud-crypto 重新导出以便使用
 pub use rustcloud_crypto::{hash_password, verify_password};
 
 #[cfg(test)]
@@ -76,12 +76,12 @@ mod tests {
         let email = "test@example.com";
         let family = Uuid::new_v4().to_string();
 
-        // Generate initial tokens
+        // 生成初始令牌对
         let (token_pair, access_jti, refresh_jti) = jwt_manager
             .generate_token_pair(user_id, email, &family)
             .unwrap();
 
-        // Verify access token
+        // 验证访问令牌
         let access_claims = jwt_manager
             .verify_access_token(&token_pair.access_token)
             .unwrap();
@@ -89,7 +89,7 @@ mod tests {
         assert_eq!(access_claims.email, email);
         assert_eq!(access_claims.jti, access_jti);
 
-        // Verify refresh token
+        // 验证刷新令牌
         let refresh_claims = jwt_manager
             .verify_refresh_token(&token_pair.refresh_token)
             .unwrap();
@@ -97,12 +97,12 @@ mod tests {
         assert_eq!(refresh_claims.family, family);
         assert_eq!(refresh_claims.jti, refresh_jti);
 
-        // Refresh tokens
+        // 刷新令牌
         let (new_pair, new_access_jti, new_refresh_jti) = jwt_manager
             .refresh_tokens(&refresh_claims, email)
             .unwrap();
 
-        // New tokens should have same family but different jti
+        // 新令牌应具有相同族但不同的 jti
         let new_refresh_claims = jwt_manager
             .verify_refresh_token(&new_pair.refresh_token)
             .unwrap();
@@ -110,7 +110,7 @@ mod tests {
         assert_ne!(new_refresh_claims.jti, refresh_jti);
         assert_eq!(new_refresh_claims.jti, new_refresh_jti);
 
-        // New access token should work
+        // 新访问令牌应可正常使用
         let new_access_claims = jwt_manager
             .verify_access_token(&new_pair.access_token)
             .unwrap();
@@ -119,16 +119,16 @@ mod tests {
 
     #[test]
     fn test_password_validation_and_hash() {
-        // Test valid password
+        // 测试有效密码
         let validation = validate_password_strength("SecurePass123", 8);
         assert!(validation.is_valid);
 
-        // Test invalid password
+        // 测试无效密码
         let validation = validate_password_strength("weak", 8);
         assert!(!validation.is_valid);
         assert!(validation.errors.len() >= 2);
 
-        // Test password hashing
+        // 测试密码哈希
         let password = "SecurePass123";
         let hash = create_password_hash(password).unwrap();
 

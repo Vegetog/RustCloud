@@ -1,4 +1,4 @@
-//! Share link repository implementation
+//! 分享链接仓储实现
 
 use std::sync::Arc;
 
@@ -11,41 +11,41 @@ use crate::entities::share_link::{self, Entity as ShareLink, Model as ShareLinkM
 use crate::error::{DatabaseError, DbResult};
 use crate::types::CreateShareLink;
 
-/// Share link repository trait for dependency injection
+/// 用于依赖注入的分享链接仓储特征
 #[async_trait]
 pub trait ShareLinkRepositoryTrait: Send + Sync {
-    /// Create a new share link
+    /// 创建新的分享链接
     async fn create(&self, data: CreateShareLink) -> DbResult<ShareLinkModel>;
 
-    /// Find share link by access token
+    /// 根据访问令牌查询分享链接
     async fn find_by_token(&self, token: &str) -> DbResult<Option<ShareLinkModel>>;
 
-    /// Find share link by ID
+    /// 根据 ID 查询分享链接
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<ShareLinkModel>>;
 
-    /// Find all share links for a document
+    /// 查询文档的全部分享链接
     async fn find_by_document(&self, doc_id: Uuid) -> DbResult<Vec<ShareLinkModel>>;
 
-    /// Find all share links created by a user
+    /// 查询用户创建的全部分享链接
     async fn find_by_creator(&self, creator_id: Uuid) -> DbResult<Vec<ShareLinkModel>>;
 
-    /// Increment access count
+    /// 增加访问计数
     async fn increment_access_count(&self, id: Uuid) -> DbResult<()>;
 
-    /// Delete share link by ID
+    /// 根据 ID 删除分享链接
     async fn delete(&self, id: Uuid) -> DbResult<()>;
 
-    /// Delete all expired share links
+    /// 删除所有过期分享链接
     async fn delete_expired(&self) -> DbResult<u64>;
 }
 
-/// Share link repository implementation
+/// 分享链接仓储实现
 pub struct ShareLinkRepository {
     db: Arc<DatabaseConnection>,
 }
 
 impl ShareLinkRepository {
-    /// Create a new share link repository
+    /// 创建新的分享链接仓储
     pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }

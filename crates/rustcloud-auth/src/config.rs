@@ -1,26 +1,26 @@
-//! Authentication configuration
+//! 认证配置
 
 use rustcloud_core::config::AppConfig;
 use rustcloud_core::error::{Error, Result};
 use std::time::Duration;
 
-/// Authentication configuration
+/// 认证配置
 #[derive(Debug, Clone)]
 pub struct AuthConfig {
-    /// JWT signing secret (at least 32 bytes / 256 bits)
+    /// JWT 签名密钥（至少 32 字节 / 256 位）
     pub jwt_secret: String,
-    /// Access token time-to-live
+    /// 访问令牌有效期
     pub access_token_ttl: Duration,
-    /// Refresh token time-to-live
+    /// 刷新令牌有效期
     pub refresh_token_ttl: Duration,
-    /// Maximum concurrent sessions per user
+    /// 每个用户允许的最大并发会话数
     pub max_sessions_per_user: u32,
-    /// Minimum password length
+    /// 最小密码长度
     pub password_min_length: usize,
 }
 
 impl AuthConfig {
-    /// Create AuthConfig from AppConfig
+    /// 从 AppConfig 创建 AuthConfig
     pub fn from_app_config(config: &AppConfig) -> Self {
         Self {
             jwt_secret: config.jwt_secret.clone(),
@@ -31,7 +31,7 @@ impl AuthConfig {
         }
     }
 
-    /// Validate configuration
+    /// 校验配置
     pub fn validate(&self) -> Result<()> {
         if self.jwt_secret.len() < 32 {
             return Err(Error::ConfigError(

@@ -1,4 +1,4 @@
-// SharePage: Access shared documents via public links
+// 分享页面：通过公开链接访问文档
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
@@ -73,13 +73,13 @@ export function SharePage() {
     try {
       const crypto = new CryptoService();
 
-      // Extract document key from URL fragment
+      // 从 URL 片段 中提取文档密钥
       const documentKeyBase64 = window.location.hash.substring(1);
       if (!documentKeyBase64) {
         throw new Error('分享链接无效：缺少解密密钥');
       }
 
-      // Convert and import document key
+      // 转换并导入文档密钥
       const documentKeyBuffer = crypto.base64ToArrayBuffer(documentKeyBase64);
       const documentKey = await window.crypto.subtle.importKey(
         'raw',
@@ -89,7 +89,7 @@ export function SharePage() {
         ['decrypt']
       );
 
-      // Download encrypted file
+      // 下载加密文件
       const downloadUrl = `/api/v1/shares/access/${token}/download${
         password ? `?password=${encodeURIComponent(password)}` : ''
       }`;
@@ -99,7 +99,7 @@ export function SharePage() {
       }
       const encryptedContent = await contentResponse.arrayBuffer();
 
-      // Decrypt file content
+      // 解密文件内容
       const contentNonceBuffer = crypto.base64ToArrayBuffer(shareData.content_nonce);
       const decryptedContent = await window.crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: contentNonceBuffer },
@@ -107,7 +107,7 @@ export function SharePage() {
         encryptedContent
       );
 
-      // Decrypt file name
+      // 解密文件名
       const nameNonceBuffer = crypto.base64ToArrayBuffer(shareData.name_nonce);
       const encryptedNameBuffer = crypto.base64ToArrayBuffer(shareData.encrypted_name);
       const nameBuffer = await window.crypto.subtle.decrypt(
@@ -117,7 +117,7 @@ export function SharePage() {
       );
       const fileName = new TextDecoder().decode(nameBuffer);
 
-      // Trigger download
+      // 触发下载
       const blob = new Blob([decryptedContent]);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -144,7 +144,7 @@ export function SharePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-      {/* Logo */}
+      {/* 标志 */}
       <div className="absolute top-6 left-6 flex items-center space-x-3">
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg shadow-lg shadow-blue-500/30">
           <Cloud className="w-5 h-5 text-white" />

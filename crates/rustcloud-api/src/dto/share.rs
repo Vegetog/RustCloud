@@ -1,13 +1,13 @@
-//! Share DTOs
+//! 分享 DTO
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-// ===== Requests =====
+// ===== 请求 =====
 
-/// Create share link request
+/// 创建分享链接请求
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateShareRequest {
     pub document_id: Uuid,
@@ -15,25 +15,25 @@ pub struct CreateShareRequest {
     #[validate(length(min = 1, message = "Encrypted key is required"))]
     pub encrypted_key: String,
 
-    /// Optional password for the share link
+    /// 分享链接的可选密码
     pub password: Option<String>,
 
-    /// Optional expiration time in seconds from now
+    /// 从当前时间起的可选过期秒数
     pub expires_in: Option<i64>,
 
-    /// Optional maximum access count
+    /// 可选最大访问次数
     pub max_access_count: Option<i32>,
 }
 
-/// Access share with password request
+/// 带密码访问分享请求
 #[derive(Debug, Deserialize)]
 pub struct AccessShareRequest {
     pub password: Option<String>,
 }
 
-// ===== Responses =====
+// ===== 响应 =====
 
-/// Share link response
+/// 分享链接响应
 #[derive(Debug, Serialize)]
 pub struct ShareLinkResponse {
     pub id: Uuid,
@@ -46,13 +46,13 @@ pub struct ShareLinkResponse {
     pub created_at: DateTime<Utc>,
 }
 
-/// Share list response
+/// 分享列表响应
 #[derive(Debug, Serialize)]
 pub struct ShareListResponse {
     pub shares: Vec<ShareLinkResponse>,
 }
 
-/// Access share response (for anonymous access)
+/// 访问分享响应（用于匿名访问）
 #[derive(Debug, Serialize)]
 pub struct AccessShareResponse {
     pub document_id: Uuid,

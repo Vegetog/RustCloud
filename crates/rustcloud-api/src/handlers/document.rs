@@ -1,4 +1,4 @@
-//! Document handlers
+//! 文档处理器
 
 use axum::{
     body::Body,
@@ -25,7 +25,7 @@ use crate::state::AppState;
 
 /// GET /api/v1/documents
 ///
-/// List documents accessible to the current user
+/// 列出当前用户可访问的文档
 pub async fn list_documents(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -34,7 +34,7 @@ pub async fn list_documents(
     let doc_repo = DocumentRepository::new(state.db.clone());
     let key_repo = DocumentKeyRepository::new(state.db.clone());
 
-    // Build list params
+    // 构建列表参数
     let params = DocumentListParams {
         owner_id: None,
         sort_by: match query.sort_by.as_deref() {
@@ -50,13 +50,13 @@ pub async fn list_documents(
         page_size: query.page_size.unwrap_or(20).min(100),
     };
 
-    // Get documents accessible to user
+    // 获取用户可访问的文档
     let page = doc_repo
         .find_accessible(user.id, params.clone())
         .await
         .map_err(ApiError::from)?;
 
-    // Convert to response with permission levels
+    // 转换为带权限级别的响应
     let mut documents = Vec::with_capacity(page.items.len());
     for doc in page.items {
         let key = key_repo
@@ -80,7 +80,7 @@ pub async fn list_documents(
             permission_level,
             version: doc.version,
             encrypted_key,
-            locked_by: None, // Don't expose lock info in list view
+            locked_by: None, // 列表视图中不暴露锁信息
             locked_at: None,
             created_at: doc.created_at,
             updated_at: doc.updated_at,
@@ -98,7 +98,7 @@ pub async fn list_documents(
 
 /// POST /api/v1/documents
 ///
-/// Upload a new document (multipart/form-data)
+/// 上传新文档（multipart/form-data）
 pub async fn upload_document(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -107,7 +107,7 @@ pub async fn upload_document(
     let mut file_content: Option<Vec<u8>> = None;
     let mut metadata: Option<UploadMetadata> = None;
 
-    // Parse multipart form
+    // 解析 multipart 表单
     while let Some(field) = multipart
         .next_field()
         .await
@@ -122,7 +122,7 @@ pub async fn upload_document(
                     .await
                     .map_err(|e| ApiError::bad_request(format!("Failed to read file: {}", e)))?;
 
-                // Check file size limit (100MB)
+                // 检查文件大小限制（100MB）
                 if data.len() > 100 * 1024 * 1024 {
                     return Err(ApiError::bad_request("File too large (max 100MB)"));
                 }
@@ -147,11 +147,11 @@ pub async fn upload_document(
     let file_content = file_content.ok_or_else(|| ApiError::bad_request("Missing file"))?;
     let metadata = metadata.ok_or_else(|| ApiError::bad_request("Missing metadata"))?;
 
-    // Generate storage path
+    // 生成存储路径
     let doc_id = Uuid::new_v4();
     let storage_path = format!("documents/{}/{}", user.id, doc_id);
 
-    // Store encrypted file
+    // 存储加密文件
     let mime_type = metadata.mime_type.clone().unwrap_or_else(|| "application/octet-stream".to_string());
     state
         .storage
@@ -162,7 +162,7 @@ pub async fn upload_document(
             ApiError::internal("Failed to store file")
         })?;
 
-    // Create document record
+    // 创建文档记录
     let doc_repo = DocumentRepository::new(state.db.clone());
     let doc = doc_repo
         .create(CreateDocument {
@@ -177,7 +177,7 @@ pub async fn upload_document(
         })
         .await
         .map_err(|e| {
-            // Clean up stored file on failure
+            // 存储失败时清理已存储的文件
             let storage = state.storage.clone();
             let path = storage_path.clone();
             tokio::spawn(async move {
@@ -186,7 +186,7 @@ pub async fn upload_document(
             ApiError::from(e)
         })?;
 
-    // Create document key for owner
+    // 为所有者创建文档密钥
     let key_repo = DocumentKeyRepository::new(state.db.clone());
     key_repo
         .create(CreateDocumentKey {
@@ -220,7 +220,7 @@ pub async fn upload_document(
 
 /// GET /api/v1/documents/:id
 ///
-/// Get document details with encrypted key
+/// 获取包含加密密钥的文档详情
 pub async fn get_document(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -229,14 +229,14 @@ pub async fn get_document(
     let doc_repo = DocumentRepository::new(state.db.clone());
     let key_repo = DocumentKeyRepository::new(state.db.clone());
 
-    // Find document
+    // 查找文档
     let doc = doc_repo
         .find_by_id(id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    // Check permission
+    // 检查权限
     let key = key_repo
         .find_by_document_and_user(id, user.id)
         .await
@@ -255,7 +255,7 @@ pub async fn get_document(
             permission_level: permission_to_string(key.permission_level),
             version: doc.version,
             encrypted_key: None,
-            locked_by: None, // Don't expose user ID, only when acquiring lock
+            locked_by: None, // 不暴露用户 ID，仅在获取锁时显示
             locked_at: doc.locked_at,
             created_at: doc.created_at,
             updated_at: doc.updated_at,
@@ -266,7 +266,7 @@ pub async fn get_document(
 
 /// GET /api/v1/documents/:id/download
 ///
-/// Download encrypted document content
+/// 下载加密文档内容
 pub async fn download_document(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -275,21 +275,21 @@ pub async fn download_document(
     let doc_repo = DocumentRepository::new(state.db.clone());
     let key_repo = DocumentKeyRepository::new(state.db.clone());
 
-    // Find document
+    // 查找文档
     let doc = doc_repo
         .find_by_id(id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    // Check permission
+    // 检查权限
     key_repo
         .find_by_document_and_user(id, user.id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::forbidden("No access to this document"))?;
 
-    // Get file from storage
+    // 从存储获取文件
     let storage_object = state
         .storage
         .get(&doc.storage_path)
@@ -299,7 +299,7 @@ pub async fn download_document(
             ApiError::internal("Failed to retrieve file")
         })?;
 
-    // Build response with proper headers
+    // 构建带正确头部的响应
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, &doc.mime_type)
@@ -316,7 +316,7 @@ pub async fn download_document(
 
 /// DELETE /api/v1/documents/:id
 ///
-/// Delete a document (owner only)
+/// 删除文档（仅所有者）
 pub async fn delete_document(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -325,14 +325,14 @@ pub async fn delete_document(
     let doc_repo = DocumentRepository::new(state.db.clone());
     let key_repo = DocumentKeyRepository::new(state.db.clone());
 
-    // Find document
+    // 查找文档
     let doc = doc_repo
         .find_by_id(id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    // Check owner permission
+    // 检查所有者权限
     let key = key_repo
         .find_by_document_and_user(id, user.id)
         .await
@@ -343,7 +343,7 @@ pub async fn delete_document(
         return Err(ApiError::forbidden("Only owner can delete document"));
     }
 
-    // Delete from storage
+    // 从存储删除文件
     state
         .storage
         .delete(&doc.storage_path)
@@ -353,7 +353,7 @@ pub async fn delete_document(
             ApiError::internal("Failed to delete file")
         })?;
 
-    // Delete from database (cascades to keys and shares)
+    // 从数据库删除（级联删除密钥和分享）
     doc_repo.delete(id).await.map_err(ApiError::from)?;
 
     tracing::info!("Document deleted: {} by user {}", id, user.email);
@@ -363,11 +363,11 @@ pub async fn delete_document(
 
 /// PATCH /api/v1/documents/:id
 ///
-/// Update document (metadata or content)
+/// 更新文档（元数据或内容）
 ///
-/// Permissions:
-/// - Write: Can update document content
-/// - Owner: Can update document content
+/// 权限：
+/// - Write：可更新文档内容
+/// - Owner：可更新文档内容
 pub async fn update_document(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -384,19 +384,19 @@ pub async fn update_document(
     let doc_repo = DocumentRepository::new(state.db.clone());
     let key_repo = DocumentKeyRepository::new(state.db.clone());
 
-    // 1. Check document access and permission level
+    // 1. 检查文档访问权限
     let my_key = key_repo
         .find_by_document_and_user(id, user.id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::forbidden("No access to this document"))?;
 
-    // 2. Only Write or Owner can edit
+    // 2. 仅写入者或所有者可编辑
     if my_key.permission_level == PermissionLevel::Read {
         return Err(ApiError::forbidden("Read-only users cannot edit document"));
     }
 
-    // 3. Verify lock ownership
+    // 3. 验证锁的归属
     use crate::services::DocumentLockManager;
     let lock_manager = DocumentLockManager::new(state.redis.clone());
     let lock_info = lock_manager.get_lock_info(id).await
@@ -406,7 +406,7 @@ pub async fn update_document(
         return Err(ApiError::conflict("You don't own the editing lock"));
     }
 
-    // 4. Verify version (optimistic locking)
+    // 4. 验证版本号（乐观锁）
     let current_doc = doc_repo
         .find_by_id(id)
         .await
@@ -419,7 +419,7 @@ pub async fn update_document(
         ));
     }
 
-    // 5. Update document in database with version increment
+    // 5. 更新数据库中的文档并递增版本号
     let update_data = UpdateDocument {
         encrypted_name: req.encrypted_name,
         name_nonce: req.name_nonce,
@@ -428,14 +428,14 @@ pub async fn update_document(
         storage_path: req.storage_path,
         size: req.size,
         version: Some(current_doc.version + 1),
-        locked_by: Some(None), // Clear lock info
+        locked_by: Some(None), // 清除锁信息
         locked_at: Some(None),
     };
 
     let updated_doc = doc_repo.update(id, update_data).await.map_err(ApiError::from)?;
 
-    // 6. Release lock after successful save
-    lock_manager.release_lock(id, &req.lock_id).await.ok(); // Ignore release errors
+    // 6. 保存成功后释放锁
+    lock_manager.release_lock(id, &req.lock_id).await.ok(); // 忽略释放锁的错误
 
     tracing::info!(
         "Document updated: {} by user {} ({:?})",
@@ -444,7 +444,7 @@ pub async fn update_document(
         my_key.permission_level
     );
 
-    // 7. Return updated document
+    // 7. 返回更新后的文档
     Ok(ApiResponse::success(DocumentResponse {
         id: updated_doc.id,
         encrypted_name: updated_doc.encrypted_name,
@@ -465,7 +465,7 @@ pub async fn update_document(
 
 /// POST /api/v1/documents/:id/permissions
 ///
-/// Grant permission to another user
+/// 向其他用户授予权限
 pub async fn grant_permission(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -476,14 +476,14 @@ pub async fn grant_permission(
     let key_repo = DocumentKeyRepository::new(state.db.clone());
     let user_repo = UserRepository::new(state.db.clone());
 
-    // Find document
+    // 查找文档
     doc_repo
         .find_by_id(id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    // Check owner/write permission
+    // 检查所有者/写入权限
     let my_key = key_repo
         .find_by_document_and_user(id, user.id)
         .await
@@ -494,21 +494,21 @@ pub async fn grant_permission(
         return Err(ApiError::forbidden("Insufficient permissions"));
     }
 
-    // Find target user
+    // 查找目标用户
     let target_user = user_repo
         .find_by_email(&req.user_email)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("User"))?;
 
-    // Parse permission level
+    // 解析权限级别
     let permission_level = match req.permission_level.as_str() {
         "read" => PermissionLevel::Read,
         "write" => PermissionLevel::Write,
         _ => return Err(ApiError::bad_request("Invalid permission level")),
     };
 
-    // Check if key already exists
+    // 检查密钥是否已存在
     if key_repo
         .find_by_document_and_user(id, target_user.id)
         .await
@@ -518,7 +518,7 @@ pub async fn grant_permission(
         return Err(ApiError::conflict("User already has access to this document"));
     }
 
-    // Create document key for target user
+    // 为目标用户创建文档密钥
     let key = key_repo
         .create(CreateDocumentKey {
             document_id: id,
@@ -546,7 +546,7 @@ pub async fn grant_permission(
 
 /// GET /api/v1/documents/:id/permissions
 ///
-/// List all users with access to a document
+/// 列出拥有文档访问权限的所有用户
 pub async fn list_permissions(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -555,20 +555,20 @@ pub async fn list_permissions(
     let key_repo = DocumentKeyRepository::new(state.db.clone());
     let user_repo = UserRepository::new(state.db.clone());
 
-    // Verify user has access to this document
+    // 验证用户对该文档的访问权限
     key_repo
         .find_by_document_and_user(id, user.id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::forbidden("No access to this document"))?;
 
-    // Get all keys for this document
+    // 获取该文档的所有密钥
     let keys = key_repo
         .find_by_document(id)
         .await
         .map_err(ApiError::from)?;
 
-    // Build permission list
+    // 构建权限列表
     let mut permissions = Vec::with_capacity(keys.len());
     for key in keys {
         let target_user = user_repo
@@ -592,7 +592,7 @@ pub async fn list_permissions(
 
 /// DELETE /api/v1/documents/:id/permissions/:user_id
 ///
-/// Revoke permission from a user
+/// 撤销用户权限
 pub async fn revoke_permission(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -600,7 +600,7 @@ pub async fn revoke_permission(
 ) -> Result<NoContent, ApiError> {
     let key_repo = DocumentKeyRepository::new(state.db.clone());
 
-    // Check owner permission
+    // 检查所有者权限
     let my_key = key_repo
         .find_by_document_and_user(doc_id, user.id)
         .await
@@ -611,19 +611,19 @@ pub async fn revoke_permission(
         return Err(ApiError::forbidden("Only owner can revoke permissions"));
     }
 
-    // Cannot revoke owner's own permission
+    // 不能撤销所有者自身的权限
     if target_user_id == user.id {
         return Err(ApiError::bad_request("Cannot revoke your own permission"));
     }
 
-    // Find target key
+    // 查找目标密钥
     let target_key = key_repo
         .find_by_document_and_user(doc_id, target_user_id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Permission"))?;
 
-    // Delete the key
+    // 删除密钥
     key_repo.delete(target_key.id).await.map_err(ApiError::from)?;
 
     tracing::info!(
@@ -636,7 +636,7 @@ pub async fn revoke_permission(
     Ok(NoContent)
 }
 
-// ===== Helper functions =====
+// ===== 辅助函数 =====
 
 fn permission_to_string(level: PermissionLevel) -> String {
     match level {

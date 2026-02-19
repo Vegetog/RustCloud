@@ -37,7 +37,7 @@ pub struct ReleaseLockRequest {
 
 /// GET /api/v1/documents/:id/lock
 ///
-/// Try to acquire editing lock for a document
+/// 尝试获取文档编辑锁
 pub async fn acquire_lock(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -49,7 +49,7 @@ pub async fn acquire_lock(
         user.email
     );
 
-    // 1. Verify user has access to the document
+    // 1. 验证用户是否有权限访问文档
     let doc_repo = DocumentRepository::new(state.db.clone());
     let doc = doc_repo
         .find_by_id(id)
@@ -57,7 +57,7 @@ pub async fn acquire_lock(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    // 2. Try to acquire lock
+    // 2. 尝试获取编辑锁
     let lock_manager = DocumentLockManager::new(state.redis.clone());
 
     match lock_manager.acquire_lock(id, user.id, user.email.clone()).await {
@@ -79,7 +79,7 @@ pub async fn acquire_lock(
             .into_response())
         }
         Err(crate::services::LockError::LockHeld) => {
-            // Lock is held by another user
+            // 锁已被其他用户持有
             let lock_info = lock_manager
                 .get_lock_info(id)
                 .await
@@ -93,7 +93,7 @@ pub async fn acquire_lock(
                 lock_info.user_email
             );
 
-            // Return 409 Conflict with lock holder information
+            // 返回 409 Conflict，包含锁持有者信息
             Ok(ApiResponseWithStatus::new(
                 StatusCode::CONFLICT,
                 AcquireLockResponse {
@@ -115,7 +115,7 @@ pub async fn acquire_lock(
 
 /// POST /api/v1/documents/:id/lock/heartbeat
 ///
-/// Extend lock TTL (heartbeat)
+/// 延长锁 TTL（心跳）
 pub async fn extend_lock(
     State(state): State<AppState>,
     AuthUser(_user): AuthUser,
@@ -142,7 +142,7 @@ pub async fn extend_lock(
 
 /// DELETE /api/v1/documents/:id/lock
 ///
-/// Release editing lock
+/// 释放编辑锁
 pub async fn release_lock(
     State(state): State<AppState>,
     AuthUser(_user): AuthUser,

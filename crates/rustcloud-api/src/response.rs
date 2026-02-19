@@ -1,4 +1,4 @@
-//! Unified API response types
+//! 统一 API 响应类型
 
 use axum::{
     http::StatusCode,
@@ -7,7 +7,7 @@ use axum::{
 };
 use serde::Serialize;
 
-/// Unified API response wrapper
+/// 统一 API 响应封装
 #[derive(Debug, Serialize)]
 pub struct ApiResponse<T: Serialize> {
     pub success: bool,
@@ -16,7 +16,7 @@ pub struct ApiResponse<T: Serialize> {
 }
 
 impl<T: Serialize> ApiResponse<T> {
-    /// Create a successful response with data
+    /// 创建带数据的成功响应
     pub fn success(data: T) -> Self {
         Self {
             success: true,
@@ -24,7 +24,7 @@ impl<T: Serialize> ApiResponse<T> {
         }
     }
 
-    /// Create a successful response with no data
+    /// 创建无数据的成功响应
     pub fn ok() -> ApiResponse<()> {
         ApiResponse {
             success: true,
@@ -39,7 +39,7 @@ impl<T: Serialize> IntoResponse for ApiResponse<T> {
     }
 }
 
-/// Response with custom status code
+/// 带自定义状态码的响应
 pub struct ApiResponseWithStatus<T: Serialize> {
     pub status: StatusCode,
     pub response: ApiResponse<T>,
@@ -64,7 +64,7 @@ impl<T: Serialize> IntoResponse for ApiResponseWithStatus<T> {
     }
 }
 
-/// Empty success response (for DELETE operations)
+/// 空成功响应（用于 DELETE 操作）
 pub struct NoContent;
 
 impl IntoResponse for NoContent {

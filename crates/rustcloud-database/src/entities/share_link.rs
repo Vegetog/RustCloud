@@ -1,4 +1,4 @@
-//! Share link entity definition
+//! 分享链接实体定义
 
 use sea_orm::entity::prelude::*;
 
@@ -11,23 +11,23 @@ pub struct Model {
     pub document_id: Uuid,
     pub creator_id: Uuid,
 
-    /// Unique access token (URL-safe random string)
+    /// 唯一访问令牌（URL 安全随机字符串）
     #[sea_orm(unique)]
     pub access_token: String,
 
-    /// Base64-encoded encrypted document key (for anonymous access)
+    /// Base64 编码的加密文档密钥（用于匿名访问）
     pub encrypted_key: String,
 
-    /// Optional password hash (Argon2)
+    /// 可选密码哈希（Argon2）
     pub password_hash: Option<String>,
 
-    /// Optional expiration timestamp
+    /// 可选过期时间戳
     pub expires_at: Option<DateTimeUtc>,
 
-    /// Maximum access count (None = unlimited)
+    /// 最大访问次数（None 表示不限制）
     pub max_access_count: Option<i32>,
 
-    /// Current access count
+    /// 当前访问次数
     pub access_count: i32,
 
     pub created_at: DateTimeUtc,

@@ -1,4 +1,4 @@
-//! API error types and conversions
+//! API 错误类型与转换
 
 use axum::{
     http::StatusCode,
@@ -8,21 +8,21 @@ use axum::{
 use serde::Serialize;
 use rustcloud_core::Error as CoreError;
 
-/// API error response body
+/// API 错误响应体
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
     pub success: bool,
     pub error: ErrorDetail,
 }
 
-/// Error detail structure
+/// 错误详情结构
 #[derive(Debug, Serialize)]
 pub struct ErrorDetail {
     pub code: String,
     pub message: String,
 }
 
-/// API error type
+/// API 错误类型
 #[derive(Debug)]
 pub struct ApiError {
     pub status: StatusCode,
@@ -39,7 +39,7 @@ impl ApiError {
         }
     }
 
-    // ===== Convenience constructors =====
+    // ===== 便捷构造函数 =====
 
     pub fn bad_request(message: impl Into<String>) -> Self {
         Self::new(StatusCode::BAD_REQUEST, "VALIDATION_ERROR", message)
@@ -91,7 +91,7 @@ impl IntoResponse for ApiError {
     }
 }
 
-/// Convert from rustcloud_core::Error
+/// 从 rustcloud_core::Error 转换
 impl From<CoreError> for ApiError {
     fn from(error: CoreError) -> Self {
         match error {
@@ -114,8 +114,8 @@ impl From<CoreError> for ApiError {
             CoreError::RateLimitExceeded => Self::rate_limited(),
             CoreError::ValidationError(msg) => Self::bad_request(msg),
             CoreError::DatabaseError(msg) => {
-                tracing::error!("Database error: {}", msg);
-                Self::internal("Database error")
+                tracing::error!("数据库错误: {}", msg);
+                Self::internal("数据库错误")
             }
             CoreError::StorageError(msg) => {
                 tracing::error!("Storage error: {}", msg);
@@ -137,7 +137,7 @@ impl From<CoreError> for ApiError {
     }
 }
 
-/// Convert from database errors
+/// 从数据库错误转换
 impl From<rustcloud_database::DatabaseError> for ApiError {
     fn from(error: rustcloud_database::DatabaseError) -> Self {
         let core_error: CoreError = error.into();
@@ -145,7 +145,7 @@ impl From<rustcloud_database::DatabaseError> for ApiError {
     }
 }
 
-/// Convert from Redis errors
+/// 从 Redis 错误转换
 impl From<redis::RedisError> for ApiError {
     fn from(error: redis::RedisError) -> Self {
         tracing::error!("Redis error: {}", error);

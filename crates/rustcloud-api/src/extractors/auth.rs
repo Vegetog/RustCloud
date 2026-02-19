@@ -1,4 +1,4 @@
-//! Authentication extractor
+//! 认证提取器
 
 use axum::{
     async_trait,
@@ -9,12 +9,12 @@ use rustcloud_auth::AuthenticatedUser;
 
 use crate::error::ApiError;
 
-/// Extractor for authenticated user from request extensions
+/// 从请求扩展中提取已认证用户的提取器
 ///
-/// This extractor retrieves the `AuthenticatedUser` that was injected
-/// by the authentication middleware.
+/// 该提取器获取已注入的 `AuthenticatedUser`
+/// 该对象由认证中间件注入。
 ///
-/// # Example
+/// # 示例
 ///
 /// ```ignore
 /// async fn handler(AuthUser(user): AuthUser) -> impl IntoResponse {

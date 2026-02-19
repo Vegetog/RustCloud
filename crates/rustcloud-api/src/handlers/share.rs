@@ -1,4 +1,4 @@
-//! Share handlers
+//! 分享链接处理器
 
 use axum::{
     body::Body,
@@ -28,7 +28,7 @@ use crate::state::AppState;
 
 /// POST /api/v1/shares
 ///
-/// Create a new share link for a document
+/// 为文档创建新的分享链接
 pub async fn create_share(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -38,29 +38,29 @@ pub async fn create_share(
     let key_repo = DocumentKeyRepository::new(state.db.clone());
     let share_repo = ShareLinkRepository::new(state.db.clone());
 
-    // Verify document exists
+    // 验证文档是否存在
     doc_repo
         .find_by_id(req.document_id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    // Check user has at least read permission
+    // 检查用户至少具有读取权限
     let key = key_repo
         .find_by_document_and_user(req.document_id, user.id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::forbidden("No access to this document"))?;
 
-    // Only owner and write users can create shares
+    // 仅所有者和写入者可创建分享
     if key.permission_level == PermissionLevel::Read {
         return Err(ApiError::forbidden("Insufficient permissions to share"));
     }
 
-    // Generate access token
+    // 生成访问令牌
     let access_token = generate_token();
 
-    // Hash password if provided
+    // 若提供了密码则进行哈希
     let password_hash = match &req.password {
         Some(pwd) if !pwd.is_empty() => Some(
             create_password_hash(pwd)
@@ -69,10 +69,10 @@ pub async fn create_share(
         _ => None,
     };
 
-    // Calculate expiration
+    // 计算过期时间
     let expires_at = req.expires_in.map(|secs| Utc::now() + Duration::seconds(secs));
 
-    // Create share link
+    // 创建分享链接
     let share = share_repo
         .create(CreateShareLink {
             document_id: req.document_id,
@@ -107,7 +107,7 @@ pub async fn create_share(
 
 /// GET /api/v1/shares
 ///
-/// List share links created by current user
+/// 列出当前用户创建的分享链接
 pub async fn list_shares(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -140,7 +140,7 @@ pub async fn list_shares(
 
 /// DELETE /api/v1/shares/:id
 ///
-/// Delete a share link
+/// 删除分享链接
 pub async fn delete_share(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -148,14 +148,14 @@ pub async fn delete_share(
 ) -> Result<NoContent, ApiError> {
     let share_repo = ShareLinkRepository::new(state.db.clone());
 
-    // Find share link
+    // 查找分享链接
     let share = share_repo
         .find_by_id(id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Share link"))?;
 
-    // Only creator can delete
+    // 仅创建者可删除
     if share.creator_id != user.id {
         return Err(ApiError::forbidden("Only creator can delete share link"));
     }
@@ -169,7 +169,7 @@ pub async fn delete_share(
 
 /// GET /api/v1/shares/access/:token
 ///
-/// Access a shared document (public, no auth required)
+/// 访问分享文档（公开接口，无需认证）
 pub async fn access_share_get(
     State(state): State<AppState>,
     Path(token): Path<String>,
@@ -179,7 +179,7 @@ pub async fn access_share_get(
 
 /// POST /api/v1/shares/access/:token
 ///
-/// Access a shared document with password (public, no auth required)
+/// 使用密码访问分享文档（公开接口，无需认证）
 pub async fn access_share_post(
     State(state): State<AppState>,
     Path(token): Path<String>,
@@ -188,7 +188,7 @@ pub async fn access_share_post(
     access_share_internal(state, token, req.password).await
 }
 
-/// Internal function to handle share access
+/// 处理分享访问的内部函数
 async fn access_share_internal(
     state: AppState,
     token: String,
@@ -197,14 +197,14 @@ async fn access_share_internal(
     let share_repo = ShareLinkRepository::new(state.db.clone());
     let doc_repo = DocumentRepository::new(state.db.clone());
 
-    // Find share link by token
+    // 查找分享链接 by token
     let share = share_repo
         .find_by_token(&token)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Share link"))?;
 
-    // Check expiration
+    // 检查是否已过期
     if let Some(expires_at) = share.expires_at {
         if expires_at < Utc::now() {
             return Err(ApiError::new(
@@ -215,7 +215,7 @@ async fn access_share_internal(
         }
     }
 
-    // Check access count
+    // 检查访问次数
     if let Some(max_count) = share.max_access_count {
         if share.access_count >= max_count {
             return Err(ApiError::new(
@@ -226,7 +226,7 @@ async fn access_share_internal(
         }
     }
 
-    // Verify password if required
+    // 若需要密码则进行验证
     if let Some(ref password_hash) = share.password_hash {
         let provided_password = password.ok_or_else(|| ApiError::unauthorized("Password required"))?;
         let valid = check_password(&provided_password, password_hash)
@@ -236,13 +236,13 @@ async fn access_share_internal(
         }
     }
 
-    // Increment access count
+    // 增加访问次数
     share_repo
         .increment_access_count(share.id)
         .await
         .map_err(ApiError::from)?;
 
-    // Get document details
+    // 获取文档详情
     let doc = doc_repo
         .find_by_id(share.document_id)
         .await
@@ -268,7 +268,7 @@ pub struct DownloadShareQuery {
 
 /// GET /api/v1/shares/access/:token/download
 ///
-/// Download shared document (public endpoint)
+/// 下载分享文档（公开接口）
 pub async fn download_shared_document(
     State(state): State<AppState>,
     Path(token): Path<String>,
@@ -277,14 +277,14 @@ pub async fn download_shared_document(
     let share_repo = ShareLinkRepository::new(state.db.clone());
     let doc_repo = DocumentRepository::new(state.db.clone());
 
-    // Find share link by token
+    // 查找分享链接 by token
     let share = share_repo
         .find_by_token(&token)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Share link"))?;
 
-    // Verify password if required
+    // 若需要密码则进行验证
     if let Some(password_hash) = &share.password_hash {
         let provided_password = query
             .password
@@ -297,28 +297,28 @@ pub async fn download_shared_document(
         }
     }
 
-    // Check expiration
+    // 检查是否已过期
     if let Some(expires_at) = share.expires_at {
         if Utc::now() > expires_at {
             return Err(ApiError::forbidden("Share link has expired"));
         }
     }
 
-    // Check access count
+    // 检查访问次数限制
     if let Some(max_count) = share.max_access_count {
         if share.access_count >= max_count {
             return Err(ApiError::forbidden("Access limit reached"));
         }
     }
 
-    // Get document
+    // 获取文档
     let doc = doc_repo
         .find_by_id(share.document_id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    // Get file from storage
+    // 从存储中获取文件
     let storage_object = state
         .storage
         .get(&doc.storage_path)
@@ -328,7 +328,7 @@ pub async fn download_shared_document(
             ApiError::internal("Failed to retrieve file")
         })?;
 
-    // Build response with proper headers
+    // 构建响应并设置响应头
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, &doc.mime_type)

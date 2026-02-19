@@ -1,11 +1,11 @@
-//! Database connection management
+//! 数据库连接管理
 
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use std::time::Duration;
 
 use crate::error::{DatabaseError, DbResult};
 
-/// Database connection configuration
+/// 数据库连接配置
 #[derive(Debug, Clone)]
 pub struct DatabaseConfig {
     pub url: String,
@@ -30,7 +30,7 @@ impl Default for DatabaseConfig {
 }
 
 impl DatabaseConfig {
-    /// Create config from application configuration
+    /// 从应用配置创建数据库配置
     pub fn from_env(database_url: &str) -> Self {
         Self {
             url: database_url.to_string(),
@@ -38,7 +38,7 @@ impl DatabaseConfig {
         }
     }
 
-    /// Create config with custom pool settings
+    /// 使用自定义连接池参数创建配置
     pub fn with_pool_settings(
         database_url: &str,
         max_connections: u32,
@@ -53,7 +53,7 @@ impl DatabaseConfig {
     }
 }
 
-/// Create a database connection pool
+/// 创建数据库连接池
 pub async fn create_connection(config: &DatabaseConfig) -> DbResult<DatabaseConnection> {
     let mut opt = ConnectOptions::new(&config.url);
 

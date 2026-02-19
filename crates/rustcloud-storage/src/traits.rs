@@ -1,28 +1,28 @@
-//! Storage trait definition
+//! 存储 trait 定义
 
 use async_trait::async_trait;
 use rustcloud_core::error::Result;
 
 use crate::types::{StorageMetadata, StorageObject};
 
-/// Storage trait for file operations
+/// 文件操作存储 trait
 #[async_trait]
 pub trait Storage: Send + Sync {
-    /// Store a file
+    /// 存储文件
     async fn put(&self, path: &str, content: &[u8], content_type: &str) -> Result<StorageMetadata>;
 
-    /// Retrieve a file
+    /// 获取文件
     async fn get(&self, path: &str) -> Result<StorageObject>;
 
-    /// Delete a file
+    /// 删除文件
     async fn delete(&self, path: &str) -> Result<()>;
 
-    /// Check if a file exists
+    /// 检查文件是否存在
     async fn exists(&self, path: &str) -> Result<bool>;
 
-    /// List files with a prefix
+    /// 按前缀列出文件
     async fn list(&self, prefix: &str) -> Result<Vec<StorageMetadata>>;
 
-    /// Get only metadata without content
+    /// 仅获取元数据（不含内容）
     async fn get_metadata(&self, path: &str) -> Result<StorageMetadata>;
 }

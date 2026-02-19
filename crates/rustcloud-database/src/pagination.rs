@@ -1,28 +1,28 @@
-//! Pagination types and utilities
+//! 分页类型与工具
 
 use serde::{Deserialize, Serialize};
 
-/// Paginated result container
+/// 分页结果容器
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Page<T> {
-    /// Items in current page
+    /// 当前页数据项
     pub items: Vec<T>,
-    /// Total number of items
+    /// 总数据项数量
     pub total: u64,
-    /// Current page number (1-indexed)
+    /// 当前页码（从 1 开始）
     pub page: u32,
-    /// Items per page
+    /// 每页数据项数量
     pub page_size: u32,
-    /// Total number of pages
+    /// 总页数
     pub total_pages: u32,
-    /// Has more pages
+    /// 是否有下一页
     pub has_next: bool,
-    /// Has previous pages
+    /// 是否有上一页
     pub has_prev: bool,
 }
 
 impl<T> Page<T> {
-    /// Create a new page with items and metadata
+    /// 使用数据项和元数据创建分页结果
     pub fn new(items: Vec<T>, total: u64, page: u32, page_size: u32) -> Self {
         let total_pages = if page_size == 0 {
             0
@@ -40,7 +40,7 @@ impl<T> Page<T> {
         }
     }
 
-    /// Create an empty page
+    /// 创建空分页结果
     pub fn empty(page: u32, page_size: u32) -> Self {
         Self {
             items: Vec::new(),
@@ -53,7 +53,7 @@ impl<T> Page<T> {
         }
     }
 
-    /// Transform page items using a mapping function
+    /// 使用映射函数转换分页数据项
     pub fn map<U, F>(self, f: F) -> Page<U>
     where
         F: FnMut(T) -> U,
@@ -69,12 +69,12 @@ impl<T> Page<T> {
         }
     }
 
-    /// Check if the page is empty
+    /// 检查该页是否为空
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
-    /// Get the number of items in this page
+    /// 获取该页数据项数量
     pub fn len(&self) -> usize {
         self.items.len()
     }

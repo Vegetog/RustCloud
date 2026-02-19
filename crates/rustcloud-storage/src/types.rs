@@ -1,10 +1,10 @@
-//! Storage types and metadata
+//! 存储类型与元数据
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// Storage object metadata
+/// 存储对象元数据
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageMetadata {
     pub path: String,
@@ -29,7 +29,7 @@ impl StorageMetadata {
     }
 }
 
-/// Storage object with content
+/// 包含内容的存储对象
 #[derive(Debug)]
 pub struct StorageObject {
     pub metadata: StorageMetadata,
@@ -42,7 +42,7 @@ impl StorageObject {
     }
 }
 
-/// Local storage configuration
+/// 本地存储配置
 #[derive(Debug, Clone)]
 pub struct LocalStorageConfig {
     pub base_path: PathBuf,
@@ -60,7 +60,7 @@ impl Default for LocalStorageConfig {
     }
 }
 
-/// MinIO storage configuration
+/// MinIO 存储配置
 #[derive(Debug, Clone)]
 pub struct MinioStorageConfig {
     pub endpoint: String,
@@ -86,7 +86,7 @@ impl MinioStorageConfig {
     }
 }
 
-/// Storage configuration enum
+/// 存储配置枚举
 #[derive(Debug, Clone)]
 pub enum StorageConfig {
     Local(LocalStorageConfig),

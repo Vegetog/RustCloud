@@ -1,4 +1,4 @@
-//! Request extractors
+//! 请求提取器
 
 mod auth;
 mod validated;

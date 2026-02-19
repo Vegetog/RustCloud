@@ -1,4 +1,4 @@
-//! Storage handlers for file upload
+//! 文件上传存储处理器
 
 use axum::{
     extract::{Multipart, State},
@@ -10,17 +10,17 @@ use crate::error::ApiError;
 use crate::extractors::AuthUser;
 use crate::state::AppState;
 
-/// Response for file upload
+/// 文件上传响应
 #[derive(Debug, serde::Serialize)]
 pub struct UploadResponse {
     pub storage_path: String,
 }
 
-/// Upload a file to storage
+/// 上传文件到存储
 ///
 /// POST /api/v1/storage/upload
 ///
-/// This is a generic file upload endpoint used for updating document content.
+/// 这是一个用于更新文档内容的通用文件上传接口。
 #[axum::debug_handler]
 pub async fn upload_file(
     State(state): State<AppState>,
@@ -32,7 +32,7 @@ pub async fn upload_file(
     let mut file_content: Option<Vec<u8>> = None;
     let mut field_count = 0;
 
-    // Parse multipart form
+    // 解析 multipart 表单
     while let Some(field) = multipart
         .next_field()
         .await
@@ -65,7 +65,7 @@ pub async fn upload_file(
 
             tracing::info!("Read {} bytes from file field", data.len());
 
-            // Check file size limit (100MB)
+            // 检查文件大小限制（100MB）
             if data.len() > 100 * 1024 * 1024 {
                 tracing::warn!("File too large: {} bytes", data.len());
                 return Err(ApiError::bad_request("File too large (max 100MB)"));
@@ -83,11 +83,11 @@ pub async fn upload_file(
         ApiError::bad_request("Missing file")
     })?;
 
-    // Generate storage path
+    // 生成存储路径
     let file_id = Uuid::new_v4();
     let storage_path = format!("documents/{}/{}", user.id, file_id);
 
-    // Store file
+    // 存储文件
     state
         .storage
         .put(&storage_path, &file_content, "application/octet-stream")

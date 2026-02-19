@@ -1,4 +1,4 @@
-//! Authentication handlers
+//! 认证处理器
 
 use axum::{
     extract::{Path, State},
@@ -20,22 +20,22 @@ use crate::state::AppState;
 
 /// POST /api/v1/auth/register
 ///
-/// Register a new user account
+/// 注册新用户账号
 pub async fn register(
     State(state): State<AppState>,
     ValidatedJson(req): ValidatedJson<RegisterRequest>,
 ) -> Result<ApiResponse<RegisterResponse>, ApiError> {
-    // 1. Validate password strength
+    // 1. 校验密码强度
     let validation = validate_password_strength(&req.password, 8);
     if !validation.is_valid {
         return Err(ApiError::bad_request(validation.error_message()));
     }
 
-    // 2. Hash password
+    // 2. 哈希密码
     let password_hash = create_password_hash(&req.password)
         .map_err(|e| ApiError::internal(format!("Failed to hash password: {}", e)))?;
 
-    // 3. Create user in database
+    // 3. 在数据库中创建用户
     let user_repo = UserRepository::new(state.db.clone());
     let user = user_repo
         .create(CreateUser {
@@ -66,12 +66,12 @@ pub async fn register(
 
 /// POST /api/v1/auth/login
 ///
-/// Authenticate user and return tokens
+/// 认证用户并返回令牌
 pub async fn login(
     State(state): State<AppState>,
     ValidatedJson(req): ValidatedJson<LoginRequest>,
 ) -> Result<ApiResponse<LoginResponse>, ApiError> {
-    // 1. Find user by email
+    // 1. 根据邮箱查找用户
     let user_repo = UserRepository::new(state.db.clone());
     let user = user_repo
         .find_by_email(&req.email)
@@ -79,7 +79,7 @@ pub async fn login(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::unauthorized("Invalid credentials"))?;
 
-    // 2. Verify password
+    // 2. 验证密码
     let password_valid = check_password(&req.password, &user.password_hash)
         .map_err(|e| ApiError::internal(format!("Password verification failed: {}", e)))?;
 
@@ -87,16 +87,16 @@ pub async fn login(
         return Err(ApiError::unauthorized("Invalid credentials"));
     }
 
-    // 3. Generate token family
+    // 3. 生成令牌族
     let token_family = Uuid::new_v4().to_string();
 
-    // 4. Generate tokens
+    // 4. 生成令牌
     let (token_pair, _access_jti, refresh_jti) = state
         .jwt_manager
         .generate_token_pair(user.id, &user.email, &token_family)
         .map_err(|e| ApiError::internal(format!("Failed to generate tokens: {}", e)))?;
 
-    // 5. Create session in Redis
+    // 5. 在 Redis 中创建会话
     let mut session_manager = state.session_manager();
     session_manager
         .create_session(
@@ -132,12 +132,12 @@ pub async fn login(
 
 /// POST /api/v1/auth/refresh
 ///
-/// Refresh access token using refresh token
+/// 使用刷新令牌刷新访问令牌
 pub async fn refresh(
     State(state): State<AppState>,
     Json(req): Json<RefreshRequest>,
 ) -> Result<ApiResponse<RefreshResponse>, ApiError> {
-    // 1. Verify refresh token
+    // 1. 验证刷新令牌
     let claims = state
         .jwt_manager
         .verify_refresh_token(&req.refresh_token)
@@ -149,7 +149,7 @@ pub async fn refresh(
             }
         })?;
 
-    // 2. Validate token family (check for token reuse)
+    // 2. 校验令牌族（检查令牌重用）
     let mut session_manager = state.session_manager();
     let is_valid = session_manager
         .validate_token_family(&claims.family, &claims.jti)
@@ -157,7 +157,7 @@ pub async fn refresh(
         .map_err(|e| ApiError::internal(format!("Failed to validate token family: {}", e)))?;
 
     if !is_valid {
-        // Possible token reuse attack - invalidate entire family
+        // 疑似令牌重放攻击 - 使整个令牌族失效
         tracing::warn!("Token reuse detected for family: {}", claims.family);
         session_manager
             .invalidate_token_family(&claims.family)
@@ -166,7 +166,7 @@ pub async fn refresh(
         return Err(ApiError::invalid_token());
     }
 
-    // 3. Get user email for new token
+    // 3. 获取用于新令牌的用户邮箱
     let user_repo = UserRepository::new(state.db.clone());
     let user_id = Uuid::parse_str(&claims.sub)
         .map_err(|_| ApiError::invalid_token())?;
@@ -176,13 +176,13 @@ pub async fn refresh(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::invalid_token())?;
 
-    // 4. Generate new tokens
+    // 4. 生成新令牌
     let (new_pair, _new_access_jti, new_refresh_jti) = state
         .jwt_manager
         .refresh_tokens(&claims, &user.email)
         .map_err(|e| ApiError::internal(format!("Failed to refresh tokens: {}", e)))?;
 
-    // 5. Update token family
+    // 5. 更新令牌族
     session_manager
         .update_token_family(&claims.family, &new_refresh_jti)
         .await
@@ -202,12 +202,12 @@ pub async fn refresh(
 
 /// POST /api/v1/auth/logout
 ///
-/// Logout user and invalidate tokens
+/// 登出用户并使令牌失效
 pub async fn logout(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
 ) -> Result<ApiResponse<()>, ApiError> {
-    // Blacklist the current access token
+    // 将当前访问令牌加入黑名单
     let mut session_manager = state.session_manager();
     let ttl = state.config.jwt_access_token_ttl;
 
@@ -223,7 +223,7 @@ pub async fn logout(
 
 /// GET /api/v1/auth/me
 ///
-/// Get current authenticated user information
+/// 获取当前认证用户信息
 pub async fn me(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
@@ -247,7 +247,7 @@ pub async fn me(
 
 /// GET /api/v1/auth/users/:email/public-key
 ///
-/// Get user's public key by email (for key re-encryption)
+/// 通过邮箱获取用户公钥（用于密钥重新加密）
 pub async fn get_user_public_key(
     State(state): State<AppState>,
     AuthUser(_user): AuthUser,

@@ -1,4 +1,4 @@
-//! Document entity definition
+//! 文档实体定义
 
 use sea_orm::entity::prelude::*;
 
@@ -10,34 +10,34 @@ pub struct Model {
 
     pub owner_id: Uuid,
 
-    /// Base64-encoded encrypted file name
+    /// Base64 编码的加密文件名
     pub encrypted_name: String,
 
-    /// Base64-encoded nonce for name encryption
+    /// 用于文件名加密的 Base64 编码 nonce
     pub name_nonce: String,
 
-    /// Base64-encoded nonce for content encryption
+    /// 用于内容加密的 Base64 编码 nonce
     pub content_nonce: String,
 
-    /// SHA-256 hash of encrypted content (hex)
+    /// 加密内容的 SHA-256 哈希（十六进制）
     pub content_hash: String,
 
-    /// Storage path in object storage
+    /// 对象存储中的存储路径
     pub storage_path: String,
 
-    /// File size in bytes
+    /// 文件大小（字节）
     pub size: i64,
 
-    /// MIME type
+    /// MIME 类型
     pub mime_type: String,
 
-    /// Version number for optimistic locking
+    /// 用于乐观锁的版本号
     pub version: i64,
 
-    /// User ID who currently holds the editing lock (display only, actual lock in Redis)
+    /// 当前持有编辑锁的用户 ID（仅展示，实际锁在 Redis）
     pub locked_by: Option<Uuid>,
 
-    /// When the document was locked
+    /// 文档被加锁的时间
     pub locked_at: Option<DateTimeUtc>,
 
     pub created_at: DateTimeUtc,

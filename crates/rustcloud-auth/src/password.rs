@@ -1,20 +1,20 @@
-//! Password validation and hashing
+//! 密码验证与哈希
 
 use rustcloud_core::error::Result;
 
 use crate::types::{PasswordError, PasswordValidation};
 
-/// Validate password strength
+/// 验证密码强度
 ///
-/// Requirements:
-/// - At least `min_length` characters (default: 8)
-/// - At least one uppercase letter [A-Z]
-/// - At least one lowercase letter [a-z]
-/// - At least one digit [0-9]
+/// 要求：
+/// - 至少 `min_length` 个字符（默认：8）
+/// - 至少一个大写字母 [A-Z]
+/// - 至少一个小写字母 [a-z]
+/// - 至少一个数字 [0-9]
 pub fn validate_password_strength(password: &str, min_length: usize) -> PasswordValidation {
     let mut errors = Vec::new();
 
-    // Check length
+    // 检查长度
     if password.len() < min_length {
         errors.push(PasswordError::TooShort {
             min: min_length,
@@ -22,17 +22,17 @@ pub fn validate_password_strength(password: &str, min_length: usize) -> Password
         });
     }
 
-    // Check for uppercase letter
+    // 检查是否含大写字母
     if !password.chars().any(|c| c.is_ascii_uppercase()) {
         errors.push(PasswordError::MissingUppercase);
     }
 
-    // Check for lowercase letter
+    // 检查是否含小写字母
     if !password.chars().any(|c| c.is_ascii_lowercase()) {
         errors.push(PasswordError::MissingLowercase);
     }
 
-    // Check for digit
+    // 检查是否含数字
     if !password.chars().any(|c| c.is_ascii_digit()) {
         errors.push(PasswordError::MissingDigit);
     }
@@ -43,12 +43,12 @@ pub fn validate_password_strength(password: &str, min_length: usize) -> Password
     }
 }
 
-/// Hash password using Argon2id (re-export from rustcloud-crypto)
+/// 使用 Argon2id 对密码进行哈希（从 rustcloud-crypto 重新导出）
 pub fn create_password_hash(password: &str) -> Result<String> {
     rustcloud_crypto::hash_password(password)
 }
 
-/// Verify password against hash (re-export from rustcloud-crypto)
+/// 验证密码与哈希是否匹配（从 rustcloud-crypto 重新导出）
 pub fn check_password(password: &str, hash: &str) -> Result<bool> {
     rustcloud_crypto::verify_password(password, hash)
 }
@@ -98,7 +98,7 @@ mod tests {
     fn test_password_multiple_errors() {
         let result = validate_password_strength("short", 8);
         assert!(!result.is_valid);
-        // Should have: TooShort, MissingUppercase, MissingDigit
+        // 应包含：TooShort、MissingUppercase、MissingDigit
         assert_eq!(result.errors.len(), 3);
     }
 
@@ -107,10 +107,10 @@ mod tests {
         let password = "SecurePass123";
         let hash = create_password_hash(password).unwrap();
 
-        // Correct password should verify
+        // 正确密码应通过验证
         assert!(check_password(password, &hash).unwrap());
 
-        // Wrong password should not verify
+        // 错误密码不应通过验证
         assert!(!check_password("WrongPass123", &hash).unwrap());
     }
 

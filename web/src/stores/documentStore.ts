@@ -1,5 +1,5 @@
-// DocumentStore: Document management state using Zustand
-// Handles document listing, uploading, downloading, and deletion
+// 文档状态仓库：使用 Zustand 管理文档状态
+// 处理文档列表加载、上传、下载和删除
 
 import { create } from 'zustand';
 import type { Document } from '../types/document';
@@ -8,7 +8,7 @@ import { CryptoService } from '../services/crypto';
 import { useAuthStore } from './authStore';
 
 interface DocumentState {
-  // State
+  // 状态
   documents: Document[];
   total: number;
   page: number;
@@ -17,7 +17,7 @@ interface DocumentState {
   error: string | null;
   uploadProgress: number;
 
-  // Actions
+  // 操作
   loadDocuments: (page?: number) => Promise<void>;
   uploadDocument: (file: File) => Promise<void>;
   downloadDocument: (id: string) => Promise<void>;
@@ -26,7 +26,7 @@ interface DocumentState {
 }
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
-  // Initial state
+  // 初始状态
   documents: [],
   total: 0,
   page: 1,
@@ -35,7 +35,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   error: null,
   uploadProgress: 0,
 
-  // Load documents with pagination
+  // 分页加载文档列表
   loadDocuments: async (page = 1) => {
     set({ loading: true, error: null });
 
@@ -43,7 +43,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       const response = await apiService.getDocuments({ page, page_size: 20 });
       const data = response.data.data;
 
-      // Decrypt filenames client-side
+      // 在客户端解密文件名
       const privateKey = useAuthStore.getState().privateKey;
       let documents = data.documents;
 
@@ -83,7 +83,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 
-  // Upload encrypted document
+  // 上传加密文档
   uploadDocument: async (file: File) => {
     set({ loading: true, error: null, uploadProgress: 0 });
 
@@ -95,19 +95,19 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         throw new Error('No public key available. Please login again.');
       }
 
-      // Progress: 10% - Starting encryption
+      // 进度：10% - 开始加密
       set({ uploadProgress: 10 });
 
-      // Encrypt document (content + filename)
+      // 加密文档（内容和文件名）
       const encrypted = await crypto.encryptDocument(file, publicKey);
 
-      // Progress: 50% - Encryption complete
+      // 进度：50% - 加密完成
       set({ uploadProgress: 50 });
 
-      // Create blob from encrypted content
+      // 从加密内容创建 Blob
       const blob = new Blob([encrypted.encryptedContent]);
 
-      // Upload with metadata
+      // 携带元数据上传
       await apiService.uploadDocument(blob, {
         encrypted_name: encrypted.encryptedName,
         name_nonce: encrypted.nameNonce,
@@ -117,10 +117,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         mime_type: file.type || 'application/octet-stream',
       });
 
-      // Progress: 100% - Upload complete
+      // 进度：100% - 上传完成
       set({ uploadProgress: 100 });
 
-      // Reload document list
+      // 重新加载文档列表
       await get().loadDocuments(get().page);
 
       set({ loading: false, uploadProgress: 0 });
@@ -135,7 +135,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 
-  // Download and decrypt document
+  // 下载并解密文档
   downloadDocument: async (id: string) => {
     try {
       const crypto = new CryptoService();
@@ -145,18 +145,18 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         throw new Error('No private key available. Please login again.');
       }
 
-      // Get document details (includes encrypted_key)
+      // 获取文档详情（包含 加密密钥）
       const detailResponse = await apiService.getDocumentDetail(id);
       const detail = detailResponse.data.data;
 
-      // Download encrypted content
+      // 下载加密内容
       const contentResponse = await apiService.downloadDocument(id);
       const encryptedContent = contentResponse.data;
 
-      // Extract document metadata including content nonce
+      // 提取文档元数据（含 内容 nonce）
       const document = detail.document;
 
-      // Check if content_nonce is available (older files might not have it)
+      // 检查 content_nonce 是否存在（旧文件可能没有）
       if (!document.content_nonce || document.content_nonce.trim() === '') {
         throw new Error(
           '该文件缺少解密所需的元数据（content_nonce）。' +
@@ -165,7 +165,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         );
       }
 
-      // Decrypt document
+      // 解密文档
       const decrypted = await crypto.decryptDocument(
         encryptedContent,
         document.encrypted_name,
@@ -175,7 +175,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         privateKey
       );
 
-      // Trigger browser download
+      // 触发浏览器下载
       const blob = new Blob([decrypted.content]);
       const url = URL.createObjectURL(blob);
       const a = window.document.createElement('a');
@@ -188,17 +188,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     } catch (error: any) {
       console.error('Failed to download document:', error);
 
-      // Handle error message (special handling for arraybuffer responses)
+      // 处理错误消息（arraybuffer 响应需特殊处理）
       let errorMessage = '文件下载失败';
       if (error.response?.data) {
-        // If responseType was arraybuffer, error.response.data might be ArrayBuffer
+        // 若 responseType 为 arraybuffer，error.response.data 可能是 ArrayBuffer
         if (error.response.data instanceof ArrayBuffer) {
           try {
             const text = new TextDecoder().decode(error.response.data);
             const json = JSON.parse(text);
             errorMessage = json.error?.message || json.message || errorMessage;
           } catch {
-            // Failed to parse, use default message
+            // 解析失败，使用默认消息
           }
         } else if (error.response.data.error?.message) {
           errorMessage = error.response.data.error.message;
@@ -214,12 +214,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 
-  // Delete document
+  // 删除文档
   deleteDocument: async (id: string) => {
     try {
       await apiService.deleteDocument(id);
 
-      // Reload document list
+      // 重新加载文档列表
       await get().loadDocuments(get().page);
     } catch (error: any) {
       console.error('Failed to delete document:', error);
@@ -230,7 +230,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 
-  // Clear error
+  // 清除错误
   clearError: () => {
     set({ error: null });
   },

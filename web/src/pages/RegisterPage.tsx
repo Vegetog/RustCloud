@@ -1,4 +1,4 @@
-// RegisterPage: User registration with client-side key generation
+// 注册页面：在客户端生成密钥
 
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -34,14 +34,14 @@ export function RegisterPage() {
     clearError();
     setPasswordError('');
 
-    // Validate password
+    // 校验密码
     const pwdError = validatePassword(password);
     if (pwdError) {
       setPasswordError(pwdError);
       return;
     }
 
-    // Check password match
+    // 检查密码是否一致
     if (password !== confirmPassword) {
       setPasswordError('两次输入的密码不一致');
       return;
@@ -51,7 +51,7 @@ export function RegisterPage() {
       await register(email, password);
       navigate('/documents');
     } catch (err) {
-      // Error is handled by the store
+      // 错误由 状态仓库处理
     }
   };
 

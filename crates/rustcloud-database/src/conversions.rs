@@ -1,4 +1,4 @@
-//! Conversion between core types and ORM entities
+//! 核心类型与 ORM 实体之间的转换
 
 use rustcloud_core::types::{Document, DocumentKey, Permission, ShareLink, User};
 
@@ -9,7 +9,7 @@ use crate::entities::{
     user::Model as UserModel,
 };
 
-// ========== User Conversions ==========
+// ========== 用户转换 ==========
 
 impl From<UserModel> for User {
     fn from(model: UserModel) -> Self {
@@ -26,14 +26,14 @@ impl From<UserModel> for User {
     }
 }
 
-// ========== Document Conversions ==========
+// ========== 文档转换 ==========
 
 impl From<DocumentModel> for Document {
     fn from(model: DocumentModel) -> Self {
         Document {
             id: model.id,
             owner_id: model.owner_id,
-            name: String::new(), // Decrypted name not stored in DB
+            name: String::new(), // 数据库中不存储解密后的名称
             encrypted_name: model.encrypted_name,
             mime_type: model.mime_type,
             size: model.size,
@@ -45,7 +45,7 @@ impl From<DocumentModel> for Document {
     }
 }
 
-// ========== Permission Conversions ==========
+// ========== 权限转换 ==========
 
 impl From<PermissionLevel> for Permission {
     fn from(level: PermissionLevel) -> Self {
@@ -67,7 +67,7 @@ impl From<Permission> for PermissionLevel {
     }
 }
 
-// ========== DocumentKey Conversions ==========
+// ========== 文档密钥转换 ==========
 
 impl From<DocumentKeyModel> for DocumentKey {
     fn from(model: DocumentKeyModel) -> Self {
@@ -82,7 +82,7 @@ impl From<DocumentKeyModel> for DocumentKey {
     }
 }
 
-// ========== ShareLink Conversions ==========
+// ========== 分享链接转换 ==========
 
 impl From<ShareLinkModel> for ShareLink {
     fn from(model: ShareLinkModel) -> Self {

@@ -1,5 +1,5 @@
-// API Service: HTTP client for backend communication
-// Handles authentication, documents, and shares endpoints
+// API 服务：与后端通信的 HTTP 客户端
+// 处理认证、文档和分享相关接口
 
 import axios, { type AxiosInstance, AxiosError } from 'axios';
 import type { RegisterRequest, LoginResponse } from '../types/auth';
@@ -16,7 +16,7 @@ class ApiService {
       },
     });
 
-    // Request interceptor: Add JWT token
+    // 请求拦截器：添加 JWT 令牌
     this.client.interceptors.request.use((config) => {
       const token = sessionStorage.getItem('accessToken');
       if (token) {
@@ -28,36 +28,36 @@ class ApiService {
       return config;
     });
 
-    // Response interceptor: Handle token refresh
+    // 响应拦截器：处理令牌刷新
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
         const originalRequest = error.config;
 
-        // Handle 401 Unauthorized
+        // 处理 401 未授权
         if (error.response?.status === 401 && originalRequest) {
-          // Try to refresh token
+          // 尝试刷新令牌
           const refreshToken = sessionStorage.getItem('refreshToken');
           if (refreshToken) {
             try {
               const response = await this.refreshToken(refreshToken);
               const { access_token, refresh_token } = response.data.data;
 
-              // Update tokens
+              // 更新令牌
               sessionStorage.setItem('accessToken', access_token);
               sessionStorage.setItem('refreshToken', refresh_token);
 
-              // Retry original request with new token
+              // 使用新令牌重试原请求
               originalRequest.headers.Authorization = `Bearer ${access_token}`;
               return this.client.request(originalRequest);
             } catch (refreshError) {
-              // Refresh failed, clear tokens and redirect to login
+              // 刷新失败，清除令牌并跳转到登录页
               sessionStorage.removeItem('accessToken');
               sessionStorage.removeItem('refreshToken');
               window.location.href = '/login';
             }
           } else {
-            // No refresh token, redirect to login
+            // 无刷新令牌，跳转到登录页
             window.location.href = '/login';
           }
         }
@@ -67,10 +67,10 @@ class ApiService {
     );
   }
 
-  // ===== Authentication API =====
+  // ===== 认证 API =====
 
   /**
-   * Register a new user
+   * 注册新用户
    */
   async register(data: RegisterRequest) {
     return this.client.post<{ success: boolean; data: { user: any } }>(
@@ -80,7 +80,7 @@ class ApiService {
   }
 
   /**
-   * Login with email and password
+   * 使用邮箱和密码登录
    */
   async login(email: string, password: string) {
     return this.client.post<{ success: boolean; data: LoginResponse }>(
@@ -90,7 +90,7 @@ class ApiService {
   }
 
   /**
-   * Refresh access token
+   * 刷新访问令牌
    */
   async refreshToken(refreshToken: string) {
     return this.client.post<{
@@ -100,21 +100,21 @@ class ApiService {
   }
 
   /**
-   * Logout current user
+   * 注销当前用户
    */
   async logout() {
     return this.client.post('/auth/logout');
   }
 
   /**
-   * Get current user info
+   * 获取当前用户信息
    */
   async getMe() {
     return this.client.get<{ success: boolean; data: { user: any } }>('/auth/me');
   }
 
   /**
-   * Get user's public key by email
+   * 通过邮箱获取用户公钥
    */
   async getUserPublicKey(email: string) {
     return this.client.get<{
@@ -123,10 +123,10 @@ class ApiService {
     }>(`/auth/users/${encodeURIComponent(email)}/public-key`);
   }
 
-  // ===== Documents API =====
+  // ===== 文档 API =====
 
   /**
-   * Get paginated list of documents
+   * 获取文档分页列表
    */
   async getDocuments(params?: { page?: number; page_size?: number }) {
     return this.client.get<{ success: boolean; data: DocumentListResponse }>(
@@ -136,7 +136,7 @@ class ApiService {
   }
 
   /**
-   * Upload encrypted document
+   * 上传加密文档
    */
   async uploadDocument(file: Blob, metadata: any) {
     const formData = new FormData();
@@ -153,7 +153,7 @@ class ApiService {
   }
 
   /**
-   * Get document details (includes encrypted_key)
+   * 获取文档详情（包含 encrypted_key）
    */
   async getDocumentDetail(id: string) {
     return this.client.get<{ success: boolean; data: DocumentDetailResponse }>(
@@ -162,7 +162,7 @@ class ApiService {
   }
 
   /**
-   * Download encrypted document content
+   * 下载加密文档内容
    */
   async downloadDocument(id: string) {
     return this.client.get(`/documents/${id}/download`, {
@@ -171,14 +171,14 @@ class ApiService {
   }
 
   /**
-   * Delete a document
+   * 删除文档
    */
   async deleteDocument(id: string) {
     return this.client.delete(`/documents/${id}`);
   }
 
   /**
-   * Update document metadata
+   * 更新文档元数据
    */
   async updateDocument(
     docId: string,
@@ -212,7 +212,7 @@ class ApiService {
   }
 
   /**
-   * Grant permission to another user
+   * 授予其他用户权限
    */
   async grantPermission(
     docId: string,
@@ -222,14 +222,14 @@ class ApiService {
   }
 
   /**
-   * Revoke permission from a user
+   * 撤销用户权限
    */
   async revokePermission(docId: string, userId: string) {
     return this.client.delete(`/documents/${docId}/permissions/${userId}`);
   }
 
   /**
-   * Get document permissions (list of users with access)
+   * 获取文档权限列表（有访问权限的用户列表）
    */
   async getDocumentPermissions(docId: string) {
     return this.client.get<{
@@ -243,10 +243,10 @@ class ApiService {
     }>(`/documents/${docId}/permissions`);
   }
 
-  // ===== Document Lock API =====
+  // ===== 文档锁 API =====
 
   /**
-   * Acquire editing lock for a document
+   * 获取文档编辑锁
    */
   async acquireLock(docId: string) {
     return this.client.get<{
@@ -262,7 +262,7 @@ class ApiService {
   }
 
   /**
-   * Extend lock TTL (heartbeat)
+   * 续期锁的 TTL（心跳）
    */
   async extendLock(docId: string, lockId: string) {
     return this.client.post(`/documents/${docId}/lock/heartbeat`, {
@@ -271,7 +271,7 @@ class ApiService {
   }
 
   /**
-   * Release editing lock
+   * 释放编辑锁
    */
   async releaseLock(docId: string, lockId: string) {
     return this.client.delete(`/documents/${docId}/lock`, {
@@ -279,16 +279,16 @@ class ApiService {
     });
   }
 
-  // ===== Storage API =====
+  // ===== 存储 API =====
 
   /**
-   * Upload file to storage
+   * 上传文件到存储
    */
   async uploadFile(file: Blob, fileName?: string) {
     const formData = new FormData();
     formData.append('file', file, fileName || 'encrypted');
 
-    // Remove Content-Type header to let Axios set it automatically with boundary parameter
+    // 移除 Content-Type 请求头，让 Axios 自动设置（含 boundary 参数）
     return this.client.post<{
       success: boolean;
       data: { storage_path: string };
@@ -299,24 +299,24 @@ class ApiService {
     });
   }
 
-  // ===== Shares API =====
+  // ===== 分享 API =====
 
   /**
-   * Create a share link
+   * 创建分享链接
    */
   async createShare(data: CreateShareRequest) {
     return this.client.post<{ success: boolean; data: any }>('/shares', data);
   }
 
   /**
-   * Get all share links for current user
+   * 获取当前用户的所有分享链接
    */
   async getShares() {
     return this.client.get<{ success: boolean; data: any[] }>('/shares');
   }
 
   /**
-   * Access a share link (public, no auth required)
+   * 访问分享链接（公开访问，无需认证）
    */
   async accessShare(token: string, password?: string) {
     return this.client.get<{ success: boolean; data: any }>(`/shares/access/${token}`, {
@@ -325,12 +325,12 @@ class ApiService {
   }
 
   /**
-   * Delete a share link
+   * 删除分享链接
    */
   async deleteShare(id: string) {
     return this.client.delete(`/shares/${id}`);
   }
 }
 
-// Export singleton instance
+// 导出单例
 export const apiService = new ApiService();

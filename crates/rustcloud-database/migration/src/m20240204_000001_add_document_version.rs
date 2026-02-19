@@ -8,25 +8,25 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // Add version, locked_by, and locked_at columns to documents table
+        // 向文档表添加 version、locked_by 和 locked_at 列
         manager
             .alter_table(
                 Table::alter()
                     .table(Documents::Table)
-                    // Add version column for optimistic locking
+                    // 添加 version 列，用于乐观锁
                     .add_column(
                         ColumnDef::new(Alias::new("version"))
                             .big_integer()
                             .not_null()
                             .default(1),
                     )
-                    // Add locked_by column (nullable, for display only)
+                    // 添加 locked_by 列（可为空，仅用于显示）
                     .add_column(
                         ColumnDef::new(Alias::new("locked_by"))
                             .uuid()
                             .null(),
                     )
-                    // Add locked_at column (nullable)
+                    // 添加 locked_at 列（可为空）
                     .add_column(
                         ColumnDef::new(Alias::new("locked_at"))
                             .timestamp_with_time_zone()
@@ -36,7 +36,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on version for conflict detection
+        // 创建 version 索引，用于冲突检测
         manager
             .create_index(
                 Index::create()
@@ -49,7 +49,7 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // Drop index first
+        // 先删除索引
         manager
             .drop_index(
                 Index::drop()
@@ -59,7 +59,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Drop columns
+        // 删除列
         manager
             .alter_table(
                 Table::alter()

@@ -1,6 +1,6 @@
-//! RustCloud Crypto Module
+//! RustCloud 加密模块
 //!
-//! Cryptographic operations including key derivation, encryption, and hashing.
+//! 包含密钥派生、加密和哈希等密码学操作。
 
 mod aes;
 mod argon2;
@@ -35,42 +35,42 @@ mod tests {
 
     #[test]
     fn test_full_encryption_flow() {
-        // 1. Generate salt and derive master key
+        // 1. 生成盐值并派生主密钥
         let salt = generate_salt();
         let master_key = derive_master_key("test_password_123", &salt).unwrap();
 
-        // 2. Generate RSA key pair
+        // 2. 生成 RSA 密钥对
         let rsa_keypair = generate_rsa_keypair().unwrap();
 
-        // 3. Encrypt private key with master key
+        // 3. 用主密钥加密私钥
         let encrypted_private_key =
             encrypt_private_key(&rsa_keypair.private_key_der(), &master_key).unwrap();
 
-        // 4. Generate document key
+        // 4. 生成文档密钥
         let doc_key = generate_document_key();
 
-        // 5. Encrypt document
+        // 5. 加密文档
         let plaintext = b"Hello, RustCloud! This is a secret document.";
         let encrypted_doc = encrypt_data(plaintext, &doc_key).unwrap();
 
-        // 6. Encrypt document key with RSA public key
+        // 6. 用 RSA 公钥加密文档密钥
         let encrypted_doc_key =
             encrypt_document_key(&doc_key, rsa_keypair.public_key_der()).unwrap();
 
-        // === Decryption flow ===
+        // === 解密流程 ===
 
-        // 7. Derive master key again (simulating login)
+        // 7. 再次派生主密钥（模拟登录）
         let master_key_2 = derive_master_key("test_password_123", &salt).unwrap();
 
-        // 8. Decrypt private key
+        // 8. 解密私钥
         let decrypted_private_key =
             decrypt_private_key(&encrypted_private_key, &master_key_2).unwrap();
 
-        // 9. Decrypt document key
+        // 9. 解密文档密钥
         let decrypted_doc_key =
             decrypt_document_key(&encrypted_doc_key, &decrypted_private_key).unwrap();
 
-        // 10. Decrypt document
+        // 10. 解密文档
         let decrypted_doc = decrypt_data(&encrypted_doc, &decrypted_doc_key).unwrap();
 
         assert_eq!(plaintext.as_slice(), decrypted_doc.as_slice());
@@ -84,7 +84,7 @@ mod tests {
         let encrypted_private_key =
             encrypt_private_key(&rsa_keypair.private_key_der(), &master_key).unwrap();
 
-        // Try with wrong password
+        // 使用错误密码尝试解密
         let wrong_master_key = derive_master_key("wrong_password", &salt).unwrap();
         let result = decrypt_private_key(&encrypted_private_key, &wrong_master_key);
 

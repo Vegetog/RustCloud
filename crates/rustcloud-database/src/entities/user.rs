@@ -1,4 +1,4 @@
-//! User entity definition
+//! 用户实体定义
 
 use sea_orm::entity::prelude::*;
 
@@ -13,16 +13,16 @@ pub struct Model {
 
     pub password_hash: String,
 
-    /// Base64-encoded salt for key derivation
+    /// 用于密钥派生的 Base64 编码盐值
     pub salt: String,
 
-    /// Base64-encoded RSA public key (DER format)
+    /// Base64 编码的 RSA 公钥（DER 格式）
     pub public_key: String,
 
-    /// Base64-encoded encrypted private key
+    /// Base64 编码的加密私钥
     pub encrypted_private_key: String,
 
-    /// Base64-encoded nonce for private key encryption
+    /// 用于私钥加密的 Base64 编码 nonce
     pub private_key_nonce: String,
 
     pub created_at: DateTimeUtc,

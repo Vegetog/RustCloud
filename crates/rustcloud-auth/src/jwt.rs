@@ -1,4 +1,4 @@
-//! JWT token management
+//! JWT 令牌管理
 
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
@@ -9,7 +9,7 @@ use crate::claims::{AccessTokenClaims, RefreshTokenClaims};
 use crate::config::AuthConfig;
 use crate::types::TokenPair;
 
-/// JWT token manager
+/// JWT 令牌管理器
 pub struct JwtManager {
     config: AuthConfig,
     encoding_key: EncodingKey,
@@ -17,7 +17,7 @@ pub struct JwtManager {
 }
 
 impl JwtManager {
-    /// Create a new JWT manager
+    /// 创建新的 JWT 管理器
     pub fn new(config: AuthConfig) -> Result<Self> {
         config.validate()?;
         let encoding_key = EncodingKey::from_secret(config.jwt_secret.as_bytes());
@@ -29,9 +29,9 @@ impl JwtManager {
         })
     }
 
-    /// Generate a token pair for a user
+    /// 为用户生成令牌对
     ///
-    /// Returns (TokenPair, access_jti, refresh_jti)
+    /// 返回 (TokenPair, access_jti, refresh_jti)
     pub fn generate_token_pair(
         &self,
         user_id: Uuid,
@@ -45,7 +45,7 @@ impl JwtManager {
         let access_exp = now + Duration::from_std(self.config.access_token_ttl).unwrap();
         let refresh_exp = now + Duration::from_std(self.config.refresh_token_ttl).unwrap();
 
-        // Create access token
+        // 创建访问令牌
         let access_claims = AccessTokenClaims {
             sub: user_id.to_string(),
             email: email.to_string(),
@@ -57,7 +57,7 @@ impl JwtManager {
         let access_token = encode(&Header::default(), &access_claims, &self.encoding_key)
             .map_err(|e| Error::EncryptionFailed(format!("Failed to encode access token: {}", e)))?;
 
-        // Create refresh token
+        // 创建刷新令牌
         let refresh_claims = RefreshTokenClaims {
             sub: user_id.to_string(),
             exp: refresh_exp.timestamp(),
@@ -76,7 +76,7 @@ impl JwtManager {
         Ok((token_pair, access_jti, refresh_jti))
     }
 
-    /// Verify and decode an access token
+    /// 验证并解码访问令牌
     pub fn verify_access_token(&self, token: &str) -> Result<AccessTokenClaims> {
         let validation = Validation::default();
         let token_data = decode::<AccessTokenClaims>(token, &self.decoding_key, &validation)
@@ -87,7 +87,7 @@ impl JwtManager {
         Ok(token_data.claims)
     }
 
-    /// Verify and decode a refresh token
+    /// 验证并解码刷新令牌
     pub fn verify_refresh_token(&self, token: &str) -> Result<RefreshTokenClaims> {
         let validation = Validation::default();
         let token_data = decode::<RefreshTokenClaims>(token, &self.decoding_key, &validation)
@@ -98,10 +98,10 @@ impl JwtManager {
         Ok(token_data.claims)
     }
 
-    /// Generate new token pair using refresh token (rotation)
+    /// 使用刷新令牌生成新令牌对（令牌轮换）
     ///
-    /// The new tokens will have the same family as the original refresh token.
-    /// Returns (TokenPair, new_access_jti, new_refresh_jti)
+    /// 新令牌将与原刷新令牌属于同一族。
+    /// 返回 (TokenPair, new_access_jti, new_refresh_jti)
     pub fn refresh_tokens(
         &self,
         claims: &RefreshTokenClaims,
@@ -185,11 +185,11 @@ mod tests {
 
         let (new_pair, _, _) = manager.refresh_tokens(&refresh_claims, email).unwrap();
 
-        // New tokens should be different
+        // 新令牌应与旧令牌不同
         assert_ne!(original.access_token, new_pair.access_token);
         assert_ne!(original.refresh_token, new_pair.refresh_token);
 
-        // But same family
+        // 但应属于同一族
         let new_refresh_claims = manager
             .verify_refresh_token(&new_pair.refresh_token)
             .unwrap();
@@ -220,7 +220,7 @@ mod tests {
             .generate_token_pair(user_id, email, &family)
             .unwrap();
 
-        // Each token should have unique jti
+        // 每个令牌应有唯一的 jti
         assert_ne!(jti1, jti2);
     }
 }

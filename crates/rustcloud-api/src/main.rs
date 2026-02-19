@@ -1,4 +1,4 @@
-//! RustCloud API Server
+//! RustCloud API 服务器
 
 use std::net::SocketAddr;
 
@@ -9,7 +9,7 @@ use rustcloud_api::{routes::create_router, state::AppState};
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
+    // 初始化日志追踪
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -20,7 +20,7 @@ async fn main() {
 
     tracing::info!("Starting RustCloud API server...");
 
-    // Load configuration
+    // 加载配置
     let config = match AppConfig::from_env() {
         Ok(config) => config,
         Err(e) => {
@@ -32,7 +32,7 @@ async fn main() {
     let server_addr = config.server_addr();
     tracing::info!("Server will listen on {}", server_addr);
 
-    // Initialize application state
+    // 初始化应用状态
     let state = match AppState::new(config).await {
         Ok(state) => state,
         Err(e) => {
@@ -43,10 +43,10 @@ async fn main() {
 
     tracing::info!("Application state initialized");
 
-    // Create router
+    // 创建路由器
     let app = create_router(state);
 
-    // Parse server address
+    // 解析服务器地址
     let addr: SocketAddr = server_addr.parse().unwrap_or_else(|_| {
         tracing::warn!("Invalid server address, using default");
         SocketAddr::from(([0, 0, 0, 0], 8080))
@@ -54,7 +54,7 @@ async fn main() {
 
     tracing::info!("RustCloud API server listening on {}", addr);
 
-    // Start server
+    // 启动服务器
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app)
         .await

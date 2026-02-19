@@ -1,4 +1,4 @@
-// PreviewModal: Client-side document preview with zero-knowledge encryption
+// 预览弹窗：零知识加密的客户端文档预览
 
 import { useEffect, useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
@@ -79,7 +79,7 @@ export function PreviewModal({
         setLoading(false);
       } catch (err: any) {
         console.error('[Preview] Failed:', err);
-        // Check if it's a decryption error (likely due to content update)
+        // 检查是否为解密错误（可能是内容已更新）
         if (err.name === 'OperationError' || err.message?.includes('decrypt')) {
           setError('文件内容已更新，请关闭后刷新文档列表重试');
         } else {

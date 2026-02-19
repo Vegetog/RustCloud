@@ -1,13 +1,13 @@
-//! Document DTOs
+//! 文档 DTO
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-// ===== Requests =====
+// ===== 请求 =====
 
-/// Document metadata for upload (extracted from multipart form)
+/// 上传文档的元数据（从 multipart 表单提取）
 #[derive(Debug, Deserialize, Validate)]
 pub struct UploadMetadata {
     #[validate(length(min = 1, message = "Encrypted name is required"))]
@@ -28,7 +28,7 @@ pub struct UploadMetadata {
     pub mime_type: Option<String>,
 }
 
-/// Document list query parameters
+/// 文档列表查询参数
 #[derive(Debug, Deserialize, Default)]
 pub struct DocumentListQuery {
     pub page: Option<u32>,
@@ -37,7 +37,7 @@ pub struct DocumentListQuery {
     pub sort_order: Option<String>,
 }
 
-/// Grant permission request
+/// 授权请求
 #[derive(Debug, Deserialize, Validate)]
 pub struct GrantPermissionRequest {
     #[validate(email(message = "Invalid email format"))]
@@ -46,14 +46,14 @@ pub struct GrantPermissionRequest {
     #[validate(length(min = 1, message = "Encrypted key is required"))]
     pub encrypted_key: String,
 
-    /// Permission level: "read" or "write"
+    /// 权限级别："read" 或 "write"
     #[validate(length(min = 1, message = "Permission level is required"))]
     pub permission_level: String,
 }
 
-// ===== Responses =====
+// ===== 响应 =====
 
-/// Document response
+/// 文档响应
 #[derive(Debug, Serialize)]
 pub struct DocumentResponse {
     pub id: Uuid,
@@ -75,7 +75,7 @@ pub struct DocumentResponse {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Document list response
+/// 文档列表响应
 #[derive(Debug, Serialize)]
 pub struct DocumentListResponse {
     pub documents: Vec<DocumentResponse>,
@@ -85,14 +85,14 @@ pub struct DocumentListResponse {
     pub total_pages: u32,
 }
 
-/// Document detail response (includes encrypted key)
+/// 文档详情响应（包含加密密钥）
 #[derive(Debug, Serialize)]
 pub struct DocumentDetailResponse {
     pub document: DocumentResponse,
     pub encrypted_key: String,
 }
 
-/// Permission entry response
+/// 权限条目响应
 #[derive(Debug, Serialize)]
 pub struct PermissionResponse {
     pub user_id: Uuid,
@@ -101,7 +101,7 @@ pub struct PermissionResponse {
     pub granted_at: DateTime<Utc>,
 }
 
-/// Update document request
+/// 更新文档请求
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateDocumentRequest {
     #[validate(length(min = 1, max = 1000))]
@@ -117,10 +117,10 @@ pub struct UpdateDocumentRequest {
     pub storage_path: Option<String>,
     pub size: Option<i64>,
 
-    /// Expected version for optimistic locking
+    /// 用于乐观锁的预期版本号
     pub expected_version: i64,
 
-    /// Lock ID to verify lock ownership
+    /// 用于校验锁归属的锁 ID
     #[validate(length(min = 1, message = "Lock ID is required"))]
     pub lock_id: String,
 }

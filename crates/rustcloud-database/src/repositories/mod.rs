@@ -1,4 +1,4 @@
-//! Repository implementations
+//! 仓储实现
 
 pub mod document;
 pub mod document_key;

@@ -1,4 +1,4 @@
-//! RSA-2048 key operations
+//! RSA-2048 密钥操作
 
 use rsa::{
     pkcs8::{DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey, LineEnding},
@@ -12,7 +12,7 @@ use crate::{
     keys::{DocumentKey, EncryptedData, MasterKey, RsaKeyPair},
 };
 
-/// Generate a new RSA-2048 key pair.
+/// 生成新的 RSA-2048 密钥对。
 pub fn generate_rsa_keypair() -> Result<RsaKeyPair> {
     let mut rng = rand::thread_rng();
 
@@ -35,17 +35,17 @@ pub fn generate_rsa_keypair() -> Result<RsaKeyPair> {
     ))
 }
 
-/// Encrypt RSA private key with master key using AES-256-GCM.
+/// 使用主密钥通过 AES-256-GCM 加密 RSA 私钥。
 pub fn encrypt_private_key(private_key_der: &[u8], master_key: &MasterKey) -> Result<EncryptedData> {
     encrypt_with_master_key(private_key_der, master_key)
 }
 
-/// Decrypt RSA private key with master key.
+/// 使用主密钥解密 RSA 私钥。
 pub fn decrypt_private_key(encrypted: &EncryptedData, master_key: &MasterKey) -> Result<Vec<u8>> {
     decrypt_with_master_key(encrypted, master_key)
 }
 
-/// Encrypt a document key using RSA-OAEP with SHA-256.
+/// 使用 RSA-OAEP（SHA-256）加密文档密钥。
 pub fn encrypt_document_key(doc_key: &DocumentKey, public_key_der: &[u8]) -> Result<Vec<u8>> {
     let public_key = RsaPublicKey::from_public_key_der(public_key_der)
         .map_err(|e| Error::EncryptionFailed(format!("Invalid public key: {}", e)))?;
@@ -60,7 +60,7 @@ pub fn encrypt_document_key(doc_key: &DocumentKey, public_key_der: &[u8]) -> Res
     Ok(encrypted)
 }
 
-/// Decrypt a document key using RSA-OAEP with SHA-256.
+/// 使用 RSA-OAEP（SHA-256）解密文档密钥。
 pub fn decrypt_document_key(encrypted_key: &[u8], private_key_der: &[u8]) -> Result<DocumentKey> {
     let private_key = RsaPrivateKey::from_pkcs8_der(private_key_der)
         .map_err(|e| Error::DecryptionFailed(format!("Invalid private key: {}", e)))?;
@@ -83,7 +83,7 @@ pub fn decrypt_document_key(encrypted_key: &[u8], private_key_der: &[u8]) -> Res
     Ok(DocumentKey::from_bytes(key_bytes))
 }
 
-/// Export public key as PEM format.
+/// 以 PEM 格式导出公钥。
 #[allow(dead_code)]
 pub fn public_key_to_pem(public_key_der: &[u8]) -> Result<String> {
     let public_key = RsaPublicKey::from_public_key_der(public_key_der)

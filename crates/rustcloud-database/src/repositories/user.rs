@@ -1,4 +1,4 @@
-//! User repository implementation
+//! 用户仓储实现
 
 use std::sync::Arc;
 
@@ -11,35 +11,35 @@ use crate::entities::user::{self, Entity as User, Model as UserModel};
 use crate::error::{DatabaseError, DbResult};
 use crate::types::{CreateUser, UpdateUser, UserKeys};
 
-/// User repository trait for dependency injection
+/// 用于依赖注入的用户仓储特征
 #[async_trait]
 pub trait UserRepositoryTrait: Send + Sync {
-    /// Create a new user
+    /// 创建新用户
     async fn create(&self, data: CreateUser) -> DbResult<UserModel>;
 
-    /// Find user by ID
+    /// 根据 ID 查询用户
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<UserModel>>;
 
-    /// Find user by email
+    /// 根据邮箱查找用户
     async fn find_by_email(&self, email: &str) -> DbResult<Option<UserModel>>;
 
-    /// Update user fields
+    /// 更新用户字段
     async fn update(&self, id: Uuid, data: UpdateUser) -> DbResult<UserModel>;
 
-    /// Delete user by ID
+    /// 根据 ID 删除用户
     async fn delete(&self, id: Uuid) -> DbResult<()>;
 
-    /// Update user's cryptographic keys
+    /// 更新用户加密密钥
     async fn update_keys(&self, id: Uuid, keys: UserKeys) -> DbResult<()>;
 }
 
-/// User repository implementation
+/// 用户仓储实现
 pub struct UserRepository {
     db: Arc<DatabaseConnection>,
 }
 
 impl UserRepository {
-    /// Create a new user repository
+    /// 创建新的用户仓储
     pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }

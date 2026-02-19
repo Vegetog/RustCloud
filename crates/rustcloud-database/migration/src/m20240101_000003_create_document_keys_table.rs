@@ -52,7 +52,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create unique constraint on (document_id, user_id)
+        // 创建 (document_id, user_id) 唯一约束
         manager
             .create_index(
                 Index::create()
@@ -65,7 +65,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on document_id for document's keys lookup
+        // 创建 document_id 索引，用于查询文档密钥
         manager
             .create_index(
                 Index::create()
@@ -76,7 +76,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on user_id for user's accessible documents
+        // 创建 user_id 索引，用于查询用户可访问的文档
         manager
             .create_index(
                 Index::create()

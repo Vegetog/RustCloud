@@ -34,7 +34,7 @@ export function DocumentEditorModal({
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Lock-related state
+  // 编辑锁相关状态
   const [lockId, setLockId] = useState<string | null>(null);
   const [version, setVersion] = useState<number>(0);
   const [lockError, setLockError] = useState<string | null>(null);
@@ -151,7 +151,7 @@ export function DocumentEditorModal({
 
   // 4. 加载文档内容（仅在获取锁后）
   useEffect(() => {
-    if (!lockId) return; // Wait for lock to be acquired
+    if (!lockId) return; // 等待获取编辑锁
 
     async function loadContent() {
       try {
@@ -204,7 +204,7 @@ export function DocumentEditorModal({
 
   // 保存文档
   const handleSave = async () => {
-    // Verify lock status
+    // 验证锁状态
     if (!lockId) {
       setError('无编辑锁 - 无法保存');
       return;
@@ -225,7 +225,7 @@ export function DocumentEditorModal({
         throw new Error('私钥未找到，请重新登录');
       }
 
-      // 1. 用私钥解密 document key
+      // 1. 用私钥解密 文档密钥
       const encryptedKeyBuffer = crypto.base64ToArrayBuffer(encryptedKey);
       const documentKeyBuffer = await window.crypto.subtle.decrypt(
         { name: 'RSA-OAEP' },
@@ -233,7 +233,7 @@ export function DocumentEditorModal({
         encryptedKeyBuffer
       );
 
-      // 2. 导入 document key 为 AES 密钥
+      // 2. 导入 文档密钥 为 AES 密钥
       const documentKey = await window.crypto.subtle.importKey(
         'raw',
         documentKeyBuffer,
@@ -261,7 +261,7 @@ export function DocumentEditorModal({
       const uploadResponse = await apiService.uploadFile(blob, 'encrypted');
       const newStoragePath = uploadResponse.data.data.storage_path;
 
-      // 6. 计算新的 content hash
+      // 6. 计算新的 内容哈希
       const hashBuffer = await window.crypto.subtle.digest(
         'SHA-256',
         encryptedContent
@@ -284,7 +284,7 @@ export function DocumentEditorModal({
     } catch (err: any) {
       console.error('Failed to save document:', err);
 
-      // Handle conflicts
+      // 处理冲突
       if (err.response?.status === 409) {
         const msg = err.response.data?.error?.message || '文档已被他人修改';
         setError(`保存冲突：${msg}。请刷新后重试。`);
@@ -300,7 +300,7 @@ export function DocumentEditorModal({
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
-        {/* Header */}
+        {/* 头部 */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -313,7 +313,7 @@ export function DocumentEditorModal({
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* Lock status indicator */}
+            {/* 编辑锁状态指示器 */}
             {lockId && (
               <div className="flex items-center space-x-1.5 text-green-600 text-xs font-medium">
                 <Lock className="w-4 h-4" />
@@ -342,7 +342,7 @@ export function DocumentEditorModal({
           </div>
         </div>
 
-        {/* Error */}
+        {/* 错误提示 */}
         {error && (
           <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -350,7 +350,7 @@ export function DocumentEditorModal({
           </div>
         )}
 
-        {/* Editor */}
+        {/* 编辑器 */}
         <div className="flex-1 overflow-hidden p-6">
           {loading ? (
             <div className="flex items-center justify-center h-full">
@@ -374,7 +374,7 @@ export function DocumentEditorModal({
           )}
         </div>
 
-        {/* Footer */}
+        {/* 底部按钮 */}
         <div className="flex space-x-3 p-6 border-t border-slate-200">
           <button
             onClick={onClose}

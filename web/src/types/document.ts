@@ -1,4 +1,4 @@
-// Document-related TypeScript type definitions
+// 文档相关的 TypeScript 类型定义
 
 export interface Document {
   id: string;
@@ -25,7 +25,7 @@ export interface DocumentListResponse {
 
 export interface DocumentDetailResponse {
   document: Document;
-  encrypted_key: string; // base64, RSA encrypted document key
+  encrypted_key: string; // base64，RSA 加密的文档密钥
 }
 
 export interface UploadMetadata {

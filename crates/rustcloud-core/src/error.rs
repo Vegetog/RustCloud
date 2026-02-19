@@ -1,4 +1,4 @@
-//! Error types for RustCloud
+//! RustCloud 错误类型定义
 
 use thiserror::Error;
 
@@ -6,7 +6,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    // Authentication errors
+    // 认证错误
     #[error("Invalid credentials")]
     InvalidCredentials,
 
@@ -19,7 +19,7 @@ pub enum Error {
     #[error("Unauthorized")]
     Unauthorized,
 
-    // User errors
+    // 用户错误
     #[error("User not found")]
     UserNotFound,
 
@@ -29,14 +29,14 @@ pub enum Error {
     #[error("Invalid password: {0}")]
     InvalidPassword(String),
 
-    // Document errors
+    // 文档错误
     #[error("Document not found")]
     DocumentNotFound,
 
     #[error("Document access denied")]
     DocumentAccessDenied,
 
-    // Share errors
+    // 分享链接错误
     #[error("Share link not found")]
     ShareLinkNotFound,
 
@@ -46,7 +46,7 @@ pub enum Error {
     #[error("Invalid share password")]
     InvalidSharePassword,
 
-    // Cryptographic errors
+    // 加密错误
     #[error("Encryption failed: {0}")]
     EncryptionFailed(String),
 
@@ -56,30 +56,30 @@ pub enum Error {
     #[error("Key derivation failed: {0}")]
     KeyDerivationFailed(String),
 
-    // Storage errors
+    // 存储错误
     #[error("Storage error: {0}")]
     StorageError(String),
 
     #[error("File not found")]
     FileNotFound,
 
-    // Database errors
-    #[error("Database error: {0}")]
+    // 数据库错误
+    #[error("数据库错误: {0}")]
     DatabaseError(String),
 
-    // Validation errors
-    #[error("Validation error: {0}")]
+    // 校验错误
+    #[error("校验错误: {0}")]
     ValidationError(String),
 
-    // Configuration errors
-    #[error("Configuration error: {0}")]
+    // 配置错误
+    #[error("配置 error: {0}")]
     ConfigError(String),
 
-    // Rate limiting
+    // 请求频率限制
     #[error("Too many requests")]
     RateLimitExceeded,
 
-    // Internal errors
+    // 内部错误
     #[error("Internal error: {0}")]
     Internal(String),
 }

@@ -1,4 +1,4 @@
-//! AES-256-GCM encryption and decryption
+//! AES-256-GCM 加密与解密
 
 use aes_gcm::{
     aead::{Aead, KeyInit},
@@ -9,12 +9,12 @@ use rustcloud_core::error::{Error, Result};
 
 use crate::keys::{DocumentKey, EncryptedData, MasterKey};
 
-/// Encrypt data using AES-256-GCM with a document key.
+/// 使用文档密钥通过 AES-256-GCM 加密数据。
 pub fn encrypt_data(plaintext: &[u8], key: &DocumentKey) -> Result<EncryptedData> {
     encrypt_with_key(plaintext, key.as_bytes())
 }
 
-/// Encrypt data using AES-256-GCM with a master key.
+/// 使用主密钥通过 AES-256-GCM 加密数据。
 pub fn encrypt_with_master_key(plaintext: &[u8], key: &MasterKey) -> Result<EncryptedData> {
     encrypt_with_key(plaintext, key.as_bytes())
 }
@@ -23,7 +23,7 @@ fn encrypt_with_key(plaintext: &[u8], key: &[u8; 32]) -> Result<EncryptedData> {
     let cipher =
         Aes256Gcm::new_from_slice(key).map_err(|e| Error::EncryptionFailed(e.to_string()))?;
 
-    // Generate random nonce
+    // 生成随机 nonce
     let mut nonce_bytes = [0u8; 12];
     rand::thread_rng().fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
@@ -35,12 +35,12 @@ fn encrypt_with_key(plaintext: &[u8], key: &[u8; 32]) -> Result<EncryptedData> {
     Ok(EncryptedData::new(ciphertext, nonce_bytes))
 }
 
-/// Decrypt data using AES-256-GCM with a document key.
+/// 使用文档密钥通过 AES-256-GCM 解密数据。
 pub fn decrypt_data(encrypted: &EncryptedData, key: &DocumentKey) -> Result<Vec<u8>> {
     decrypt_with_key(encrypted, key.as_bytes())
 }
 
-/// Decrypt data using AES-256-GCM with a master key.
+/// 使用主密钥通过 AES-256-GCM 解密数据。
 pub fn decrypt_with_master_key(encrypted: &EncryptedData, key: &MasterKey) -> Result<Vec<u8>> {
     decrypt_with_key(encrypted, key.as_bytes())
 }
@@ -91,7 +91,7 @@ mod tests {
         let plaintext = b"Secret message";
 
         let mut encrypted = encrypt_data(plaintext, &key).unwrap();
-        // Tamper with ciphertext
+        // 篡改密文
         if let Some(byte) = encrypted.ciphertext.first_mut() {
             *byte ^= 0xFF;
         }

@@ -1,11 +1,11 @@
-//! Key types with secure memory handling
+//! 具备安全内存处理的密钥类型
 
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-/// Master key derived from user password using Argon2id.
-/// Automatically zeroed on drop for security.
+/// 使用 Argon2id 从用户密码派生的主密钥。
+/// 出于安全考虑，析构时会自动清零。
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct MasterKey {
     key: [u8; 32],
@@ -21,8 +21,8 @@ impl MasterKey {
     }
 }
 
-/// Document encryption key (DEK) for AES-256-GCM.
-/// Automatically zeroed on drop for security.
+/// 用于 AES-256-GCM 的文档加密密钥（DEK）。
+/// 出于安全考虑，析构时会自动清零。
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct DocumentKey {
     key: [u8; 32],
@@ -50,15 +50,15 @@ impl Default for DocumentKey {
     }
 }
 
-/// RSA key pair for asymmetric encryption.
-/// Private key is zeroed on drop.
+/// 用于非对称加密的 RSA 密钥对。
+/// 私钥在析构时会清零。
 pub struct RsaKeyPair {
     public_key: Vec<u8>,
     #[allow(dead_code)]
     private_key: ZeroizeVec,
 }
 
-/// Wrapper for Vec<u8> that implements zeroize
+/// 实现 zeroize 的 Vec<u8> 封装
 struct ZeroizeVec(Vec<u8>);
 
 impl Drop for ZeroizeVec {
@@ -84,7 +84,7 @@ impl RsaKeyPair {
     }
 }
 
-/// Encrypted data with AES-256-GCM
+/// 使用 AES-256-GCM 的加密数据
 #[derive(Clone, Serialize, Deserialize)]
 pub struct EncryptedData {
     pub ciphertext: Vec<u8>,
@@ -96,7 +96,7 @@ impl EncryptedData {
         Self { ciphertext, nonce }
     }
 
-    /// Serialize to bytes (nonce + ciphertext)
+    /// 序列化为字节（nonce + 密文）
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut result = Vec::with_capacity(12 + self.ciphertext.len());
         result.extend_from_slice(&self.nonce);
@@ -104,7 +104,7 @@ impl EncryptedData {
         result
     }
 
-    /// Deserialize from bytes
+    /// 从字节反序列化
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() < 12 {
             return None;

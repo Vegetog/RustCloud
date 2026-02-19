@@ -1,4 +1,4 @@
-//! SeaORM entity definitions
+//! SeaORM 实体定义
 
 pub mod document;
 pub mod document_key;

@@ -1,6 +1,6 @@
-//! RustCloud Storage Module
+//! RustCloud 存储模块
 //!
-//! File storage abstraction with local and MinIO backends.
+//! 文件存储抽象，支持本地与 MinIO 后端。
 
 mod local;
 mod minio;

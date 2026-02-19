@@ -70,7 +70,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on access_token for token lookup
+        // 创建 access_token 索引，用于令牌查询
         manager
             .create_index(
                 Index::create()
@@ -81,7 +81,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on document_id for document's share links
+        // 创建 document_id 索引，用于查询文档分享链接
         manager
             .create_index(
                 Index::create()
@@ -92,7 +92,7 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create index on expires_at for cleanup of expired links
+        // 创建 expires_at 索引，用于清理过期链接
         manager
             .create_index(
                 Index::create()

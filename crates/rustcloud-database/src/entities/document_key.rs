@@ -1,4 +1,4 @@
-//! Document key entity definition
+//! 文档密钥实体定义
 
 use sea_orm::entity::prelude::*;
 

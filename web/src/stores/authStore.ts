@@ -1,6 +1,6 @@
-// AuthStore: Authentication state management using Zustand
-// Manages user authentication, JWT tokens, and cryptographic keys
-// Keys are persisted in sessionStorage for page refresh support (cleared on browser close)
+// 认证状态仓库：使用 Zustand 管理认证状态
+// 负责用户认证、JWT 令牌和加密密钥的管理
+// 密钥持久化到 sessionStorage 以支持页面刷新（浏览器关闭时清除）
 
 import { create } from 'zustand';
 import type { User } from '../types/auth';
@@ -8,18 +8,18 @@ import { CryptoService } from '../services/crypto';
 import { apiService } from '../services/api';
 
 interface AuthState {
-  // State
+  // 状态
   isAuthenticated: boolean;
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
-  masterKey: CryptoKey | null; // Persisted in sessionStorage (JWK format)
-  privateKey: CryptoKey | null; // Persisted in sessionStorage (JWK format)
+  masterKey: CryptoKey | null; // 持久化到 sessionStorage（JWK 格式）
+  privateKey: CryptoKey | null; // 持久化到 sessionStorage（JWK 格式）
   publicKey: CryptoKey | null;
   loading: boolean;
   error: string | null;
 
-  // Actions
+  // 操作
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -27,7 +27,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  // Initial state
+  // 初始状态
   isAuthenticated: false,
   user: null,
   accessToken: sessionStorage.getItem('accessToken'),
@@ -38,22 +38,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: false,
   error: null,
 
-  // Login action
+  // 登录操作
   login: async (email: string, password: string) => {
     set({ loading: true, error: null });
 
     try {
       const crypto = new CryptoService();
 
-      // 1. Send login request
+      // 1. 发送登录请求
       const response = await apiService.login(email, password);
       const data = response.data.data;
 
-      // 2. Derive master key from password + salt
+      // 2. 从密码和盐值派生主密钥
       const salt = crypto.base64ToArrayBuffer(data.salt);
       const masterKey = await crypto.deriveMasterKey(password, new Uint8Array(salt));
 
-      // 3. Decrypt private key
+      // 3. 解密私钥
       const encryptedPrivateKeyBuffer = crypto.base64ToArrayBuffer(data.encrypted_private_key);
       const privateKeyNonceBuffer = crypto.base64ToArrayBuffer(data.private_key_nonce);
       const privateKey = await crypto.decryptPrivateKey(
@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         masterKey
       );
 
-      // 4. Import public key (extractable: true for session persistence)
+      // 4. 导入公钥（extractable: true 用于会话持久化）
       const publicKeyBuffer = crypto.base64ToArrayBuffer(data.user.public_key);
       const publicKey = await window.crypto.subtle.importKey(
         'spki',
@@ -71,11 +71,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         ['encrypt']
       );
 
-      // 5. Save tokens to sessionStorage
+      // 5. 将令牌保存到 sessionStorage
       sessionStorage.setItem('accessToken', data.access_token);
       sessionStorage.setItem('refreshToken', data.refresh_token);
 
-      // 6. Export and save keys to sessionStorage for persistence across refresh
+      // 6. 导出密钥并保存到 sessionStorage，以便页面刷新后恢复
       const privateKeyJwk = await window.crypto.subtle.exportKey('jwk', privateKey);
       const publicKeyJwk = await window.crypto.subtle.exportKey('jwk', publicKey);
       const masterKeyRaw = await window.crypto.subtle.exportKey('raw', masterKey);
@@ -84,7 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       sessionStorage.setItem('masterKeyRaw', crypto.arrayBufferToBase64(masterKeyRaw));
       sessionStorage.setItem('user', JSON.stringify(data.user));
 
-      // 7. Update state
+      // 7. 更新状态
       set({
         isAuthenticated: true,
         user: data.user,
@@ -106,45 +106,45 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // Register action
+  // 注册操作
   register: async (email: string, password: string) => {
     set({ loading: true, error: null });
 
     try {
       const crypto = new CryptoService();
 
-      // 1. Generate random salt (32 bytes)
+      // 1. 生成随机盐值（32 字节）
       const salt = window.crypto.getRandomValues(new Uint8Array(32));
 
-      // 2. Derive master key
+      // 2. 派生主密钥
       const masterKey = await crypto.deriveMasterKey(password, salt);
 
-      // 3. Generate RSA key pair (this may take ~1s)
+      // 3. 生成 RSA 密钥对（可能耗时约 1 秒）
       const keyPair = await crypto.generateKeyPair();
 
-      // 4. Encrypt private key with master key
+      // 4. 使用主密钥加密私钥
       const encryptedPrivateKey = await crypto.encryptPrivateKey(
         keyPair.privateKey,
         masterKey
       );
 
-      // 5. Export public key
+      // 5. 导出公钥
       const publicKeyBuffer = await window.crypto.subtle.exportKey(
         'spki',
         keyPair.publicKey
       );
 
-      // 6. Send registration request
+      // 6. 发送注册请求
       await apiService.register({
         email,
-        password, // Backend will hash with Argon2id
+        password, // 后端将使用 Argon2id 进行哈希
         salt: crypto.arrayBufferToBase64(salt.buffer as ArrayBuffer),
         public_key: crypto.arrayBufferToBase64(publicKeyBuffer),
         encrypted_private_key: crypto.arrayBufferToBase64(encryptedPrivateKey.ciphertext),
         private_key_nonce: crypto.arrayBufferToBase64(encryptedPrivateKey.nonce.buffer as ArrayBuffer),
       });
 
-      // 7. Auto-login after successful registration
+      // 7. 注册成功后自动登录
       await get().login(email, password);
     } catch (error: any) {
       console.error('Registration failed:', error);
@@ -156,12 +156,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // Logout action
+  // 注销操作
   logout: () => {
-    // Send logout request (fire and forget)
+    // 发送注销请求（即发即忘）
     apiService.logout().catch(() => {});
 
-    // Clear all from sessionStorage (tokens + keys)
+    // 清除 sessionStorage 中的所有数据（令牌和密钥）
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('privateKeyJwk');
@@ -169,13 +169,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     sessionStorage.removeItem('masterKeyRaw');
     sessionStorage.removeItem('user');
 
-    // Clear all state (including in-memory keys)
+    // 清除所有状态（包括内存中的密钥）
     set({
       isAuthenticated: false,
       user: null,
       accessToken: null,
       refreshToken: null,
-      masterKey: null, // Keys are garbage collected
+      masterKey: null, // 密钥由垃圾回收器回收
       privateKey: null,
       publicKey: null,
       loading: false,
@@ -183,17 +183,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  // Clear error
+  // 清除错误
   clearError: () => {
     set({ error: null });
   },
 }));
 
-// Initialize: Restore keys from sessionStorage on page refresh
+// 初始化：页面刷新时从 sessionStorage 恢复密钥
 async function initializeAuth() {
   const initState = useAuthStore.getState();
 
-  // Check if we have tokens and stored keys
+  // 检查是否存在令牌和已存储的密钥
   if (initState.accessToken && !initState.privateKey) {
     const privateKeyJwkStr = sessionStorage.getItem('privateKeyJwk');
     const publicKeyJwkStr = sessionStorage.getItem('publicKeyJwk');
@@ -204,7 +204,7 @@ async function initializeAuth() {
       try {
         const crypto = new CryptoService();
 
-        // Restore private key
+        // 恢复私钥
         const privateKeyJwk = JSON.parse(privateKeyJwkStr);
         const privateKey = await window.crypto.subtle.importKey(
           'jwk',
@@ -214,7 +214,7 @@ async function initializeAuth() {
           ['decrypt']
         );
 
-        // Restore public key
+        // 恢复公钥
         const publicKeyJwk = JSON.parse(publicKeyJwkStr);
         const publicKey = await window.crypto.subtle.importKey(
           'jwk',
@@ -224,7 +224,7 @@ async function initializeAuth() {
           ['encrypt']
         );
 
-        // Restore master key
+        // 恢复主密钥
         const masterKeyRaw = crypto.base64ToArrayBuffer(masterKeyRawStr);
         const masterKey = await window.crypto.subtle.importKey(
           'raw',
@@ -234,10 +234,10 @@ async function initializeAuth() {
           ['encrypt', 'decrypt']
         );
 
-        // Restore user
+        // 恢复用户信息
         const user = JSON.parse(userStr);
 
-        // Update state
+        // 更新状态
         useAuthStore.setState({
           isAuthenticated: true,
           user,
@@ -253,7 +253,7 @@ async function initializeAuth() {
       }
     }
 
-    // If restoration failed, clear everything
+    // 若恢复失败，清除所有数据
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('privateKeyJwk');
@@ -269,5 +269,5 @@ async function initializeAuth() {
   }
 }
 
-// Run initialization
+// 执行初始化
 initializeAuth();

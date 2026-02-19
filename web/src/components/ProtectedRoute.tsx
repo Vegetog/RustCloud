@@ -1,4 +1,4 @@
-// ProtectedRoute: Route guard for authenticated users only
+// 路由守卫：仅允许已认证用户访问
 
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';

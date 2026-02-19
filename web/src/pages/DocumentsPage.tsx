@@ -1,4 +1,4 @@
-// DocumentsPage: Main page for document management
+// 文档管理主页面
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -56,15 +56,15 @@ export function DocumentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
 
-  // Share modal state
+  // 分享弹窗状态
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareDocumentId, setShareDocumentId] = useState<string | null>(null);
   const [shareEncryptedKey, setShareEncryptedKey] = useState<string | null>(null);
 
-  // Preview modal state
+  // 预览弹窗状态
   const [previewDocument, setPreviewDocument] = useState<any | null>(null);
 
-  // Editor modal state
+  // 编辑器弹窗状态
   const [editingDocument, setEditingDocument] = useState<any | null>(null);
 
   useEffect(() => {
@@ -83,12 +83,12 @@ export function DocumentsPage() {
 
     try {
       await uploadDocument(file);
-      // Clear file input
+      // 清除文件输入
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     } catch (err) {
-      // Error is handled by the store
+      // 错误由 状态仓库处理
     }
   };
 
@@ -99,7 +99,7 @@ export function DocumentsPage() {
 
   const handleShare = async (documentId: string) => {
     try {
-      // Fetch document details to get encrypted_key
+      // 获取文档详情以取得 加密密钥
       const response = await apiService.getDocumentDetail(documentId);
       const encryptedKey = response.data.data.encrypted_key;
 
@@ -119,11 +119,11 @@ export function DocumentsPage() {
 
   const handlePreview = async (doc: any) => {
     try {
-      // Fetch document details to get encrypted_key (not included in list response)
+      // 获取文档详情以取得 加密密钥（列表响应中不包含）
       const response = await apiService.getDocumentDetail(doc.id);
       const documentDetail = response.data.data;
 
-      // Merge list data with detail data
+      // 合并列表数据与详情数据
       setPreviewDocument({
         ...doc,
         encrypted_key: documentDetail.encrypted_key,
@@ -154,14 +154,14 @@ export function DocumentsPage() {
         return;
       }
 
-      // 获取文档详情（需要 encrypted_key）
+      // 获取文档详情（需要 加密密钥）
       const response = await apiService.getDocumentDetail(doc.id);
       const documentDetail = response.data.data;
 
       // 解密文件名以显示在编辑器中
       const crypto = new CryptoService();
 
-      // 1. 用私钥解密 document key
+      // 1. 用私钥解密 文档密钥
       const encryptedKeyBuffer = crypto.base64ToArrayBuffer(documentDetail.encrypted_key);
       const documentKeyBuffer = await window.crypto.subtle.decrypt(
         { name: 'RSA-OAEP' },
@@ -169,7 +169,7 @@ export function DocumentsPage() {
         encryptedKeyBuffer
       );
 
-      // 2. 导入 document key
+      // 2. 导入 文档密钥
       const documentKey = await window.crypto.subtle.importKey(
         'raw',
         documentKeyBuffer,
@@ -253,7 +253,7 @@ export function DocumentsPage() {
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* 侧边栏 */}
       <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 shrink-0">
-        {/* Logo */}
+        {/* 标志 */}
         <div className="p-6 flex items-center space-x-3 text-white border-b border-slate-800">
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg shadow-lg shadow-blue-500/30">
             <Cloud className="w-6 h-6 text-white" />
@@ -503,7 +503,7 @@ export function DocumentsPage() {
                           <Download className="w-3.5 h-3.5" />
                           <span>下载</span>
                         </button>
-                        {/* 编辑按钮 - Write/Owner 且文件可编辑 */}
+                        {/* 编辑按钮 - 写入者/所有者 且文件可编辑 */}
                         {(doc.permission_level === 'write' ||
                           doc.permission_level === 'owner') &&
                           isTextFile(doc.mime_type) && (
@@ -561,7 +561,7 @@ export function DocumentsPage() {
         </div>
       </main>
 
-      {/* Share Modal */}
+      {/* 分享弹窗 */}
       {shareModalOpen && shareDocumentId && shareEncryptedKey && (
         <ShareModal
           documentId={shareDocumentId}
@@ -570,7 +570,7 @@ export function DocumentsPage() {
         />
       )}
 
-      {/* Preview Modal */}
+      {/* 预览弹窗 */}
       {previewDocument && (
         <PreviewModal
           documentId={previewDocument.id}
@@ -584,7 +584,7 @@ export function DocumentsPage() {
         />
       )}
 
-      {/* Editor Modal */}
+      {/* 编辑器弹窗 */}
       {editingDocument && (
         <DocumentEditorModal
           documentId={editingDocument.id}

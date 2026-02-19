@@ -1,15 +1,15 @@
-//! RustCloud Database Module
+//! RustCloud 数据库模块
 //!
-//! SeaORM entities and repository implementations for RustCloud.
+//! 面向 RustCloud 的 SeaORM 实体定义和仓储实现。
 //!
-//! # Features
+//! # 功能特性
 //!
-//! - SeaORM entity definitions for users, documents, document keys, and share links
-//! - Repository pattern for data access abstraction
-//! - Database connection pool management
-//! - Type conversions between core types and ORM entities
+//! - 用户、文档、文档密钥和分享链接的 SeaORM 实体定义
+//! - 用于数据访问抽象的仓储模式
+//! - 数据库连接池管理
+//! - 核心类型与 ORM 实体之间的类型转换
 //!
-//! # Example
+//! # 使用示例
 //!
 //! ```ignore
 //! use rustcloud_database::{
@@ -17,11 +17,11 @@
 //!     UserRepository, UserRepositoryTrait,
 //! };
 //!
-//! // Create connection
+//! // 创建数据库连接
 //! let config = DatabaseConfig::from_env(&database_url);
 //! let db = create_connection(&config).await?;
 //!
-//! // Use repository
+//! // 使用仓储
 //! let user_repo = UserRepository::new(db.clone());
 //! let user = user_repo.find_by_email("user@example.com").await?;
 //! ```
@@ -34,29 +34,29 @@ pub mod pagination;
 pub mod repositories;
 pub mod types;
 
-// Re-export connection utilities
+// 重新导出连接工具
 pub use connection::{create_connection, DatabaseConfig};
 
-// Re-export error types
+// 重新导出错误类型
 pub use error::{DatabaseError, DbResult};
 
-// Re-export pagination
+// 重新导出分页
 pub use pagination::Page;
 
-// Re-export entities
+// 重新导出实体
 pub use entities::{DocumentEntity, DocumentKeyEntity, PermissionLevel, ShareLinkEntity, UserEntity};
 
-// Re-export repositories
+// 重新导出仓储
 pub use repositories::{
     DocumentKeyRepository, DocumentKeyRepositoryTrait, DocumentRepository, DocumentRepositoryTrait,
     ShareLinkRepository, ShareLinkRepositoryTrait, UserRepository, UserRepositoryTrait,
 };
 
-// Re-export types
+// 重新导出类型
 pub use types::{
     CreateDocument, CreateDocumentKey, CreateShareLink, CreateUser, DocumentListParams, SortField,
     SortOrder, UpdateDocument, UpdateUser, UserKeys,
 };
 
-// Re-export sea_orm for downstream usage
+// 重新导出 sea_orm 供下游使用
 pub use sea_orm::DatabaseConnection;

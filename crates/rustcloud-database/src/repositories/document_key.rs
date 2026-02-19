@@ -1,4 +1,4 @@
-//! Document key repository implementation
+//! 文档密钥仓储实现
 
 use std::sync::Arc;
 
@@ -13,42 +13,42 @@ use crate::entities::document_key::{
 use crate::error::{DatabaseError, DbResult};
 use crate::types::CreateDocumentKey;
 
-/// Document key repository trait for dependency injection
+/// 用于依赖注入的文档密钥仓储特征
 #[async_trait]
 pub trait DocumentKeyRepositoryTrait: Send + Sync {
-    /// Create a new document key
+    /// 创建新的文档密钥
     async fn create(&self, data: CreateDocumentKey) -> DbResult<DocumentKeyModel>;
 
-    /// Find key by document and user
+    /// 根据文档和用户查询密钥
     async fn find_by_document_and_user(
         &self,
         doc_id: Uuid,
         user_id: Uuid,
     ) -> DbResult<Option<DocumentKeyModel>>;
 
-    /// Find all keys for a document
+    /// 查询文档的全部密钥
     async fn find_by_document(&self, doc_id: Uuid) -> DbResult<Vec<DocumentKeyModel>>;
 
-    /// Find all keys for a user
+    /// 查询用户的全部密钥
     async fn find_by_user(&self, user_id: Uuid) -> DbResult<Vec<DocumentKeyModel>>;
 
-    /// Update permission level
+    /// 更新权限级别
     async fn update_permission(&self, id: Uuid, level: PermissionLevel) -> DbResult<()>;
 
-    /// Delete key by ID
+    /// 根据 ID 删除密钥
     async fn delete(&self, id: Uuid) -> DbResult<()>;
 
-    /// Delete all keys for a document
+    /// 删除文档的全部密钥
     async fn delete_by_document(&self, doc_id: Uuid) -> DbResult<u64>;
 }
 
-/// Document key repository implementation
+/// 文档密钥仓储实现
 pub struct DocumentKeyRepository {
     db: Arc<DatabaseConnection>,
 }
 
 impl DocumentKeyRepository {
-    /// Create a new document key repository
+    /// 创建新的文档密钥仓储
     pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }

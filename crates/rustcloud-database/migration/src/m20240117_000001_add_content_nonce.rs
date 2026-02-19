@@ -8,7 +8,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // Add content_nonce column to documents table
+        // 向文档表添加 content_nonce 列
         manager
             .alter_table(
                 Table::alter()
@@ -17,7 +17,7 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(Alias::new("content_nonce"))
                             .string_len(48)
                             .not_null()
-                            .default(""), // Temporary default for existing rows
+                            .default(""), // 为现有行设置的临时默认值
                     )
                     .to_owned(),
             )
@@ -25,7 +25,7 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // Drop content_nonce column
+        // 删除 content_nonce 列
         manager
             .alter_table(
                 Table::alter()

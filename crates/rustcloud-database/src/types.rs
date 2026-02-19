@@ -1,4 +1,4 @@
-//! Data Transfer Objects for database operations
+//! 数据库操作数据传输对象
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 use crate::entities::document_key::PermissionLevel;
 
-// ========== User DTOs ==========
+// ========== 用户 DTO ==========
 
-/// Data for creating a new user
+/// 创建新用户所需数据
 #[derive(Debug, Clone)]
 pub struct CreateUser {
     pub email: String,
@@ -19,14 +19,14 @@ pub struct CreateUser {
     pub private_key_nonce: String,
 }
 
-/// Data for updating an existing user
+/// 更新现有用户所需数据
 #[derive(Debug, Clone, Default)]
 pub struct UpdateUser {
     pub email: Option<String>,
     pub password_hash: Option<String>,
 }
 
-/// Data for updating user cryptographic keys
+/// 更新用户加密密钥所需数据
 #[derive(Debug, Clone)]
 pub struct UserKeys {
     pub password_hash: String,
@@ -36,9 +36,9 @@ pub struct UserKeys {
     pub private_key_nonce: String,
 }
 
-// ========== Document DTOs ==========
+// ========== 文档 DTO ==========
 
-/// Data for creating a new document
+/// 创建新文档所需数据
 #[derive(Debug, Clone)]
 pub struct CreateDocument {
     pub owner_id: Uuid,
@@ -51,7 +51,7 @@ pub struct CreateDocument {
     pub mime_type: String,
 }
 
-/// Data for updating an existing document
+/// 更新现有文档所需数据
 #[derive(Debug, Clone, Default)]
 pub struct UpdateDocument {
     pub encrypted_name: Option<String>,
@@ -65,9 +65,9 @@ pub struct UpdateDocument {
     pub locked_at: Option<Option<DateTime<Utc>>>,
 }
 
-// ========== DocumentKey DTOs ==========
+// ========== 文档密钥 DTO ==========
 
-/// Data for creating a new document key
+/// 创建新文档密钥所需数据
 #[derive(Debug, Clone)]
 pub struct CreateDocumentKey {
     pub document_id: Uuid,
@@ -76,9 +76,9 @@ pub struct CreateDocumentKey {
     pub permission_level: PermissionLevel,
 }
 
-// ========== ShareLink DTOs ==========
+// ========== 分享链接 DTO ==========
 
-/// Data for creating a new share link
+/// 创建新分享链接所需数据
 #[derive(Debug, Clone)]
 pub struct CreateShareLink {
     pub document_id: Uuid,
@@ -90,9 +90,9 @@ pub struct CreateShareLink {
     pub max_access_count: Option<i32>,
 }
 
-// ========== Query Parameters ==========
+// ========== 查询参数 ==========
 
-/// Parameters for listing documents
+/// 文档列表查询参数
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentListParams {
     pub owner_id: Option<Uuid>,
@@ -115,23 +115,23 @@ impl Default for DocumentListParams {
 }
 
 impl DocumentListParams {
-    /// Create new list parameters with defaults
+    /// 创建带默认值的列表参数
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Calculate offset for pagination
+    /// 计算分页偏移量
     pub fn offset(&self) -> u64 {
         ((self.page.saturating_sub(1)) * self.page_size) as u64
     }
 
-    /// Get limit for pagination
+    /// 获取分页限制数量
     pub fn limit(&self) -> u64 {
         self.page_size as u64
     }
 }
 
-/// Sort field options
+/// 排序字段选项
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum SortField {
@@ -141,7 +141,7 @@ pub enum SortField {
     Size,
 }
 
-/// Sort order options
+/// 排序顺序选项
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SortOrder {

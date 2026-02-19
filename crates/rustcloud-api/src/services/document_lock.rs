@@ -48,7 +48,7 @@ impl DocumentLockManager {
         format!("{}{}", LOCK_KEY_PREFIX, doc_id)
     }
 
-    /// Attempt to acquire editing lock for a document
+    /// 尝试获取文档的编辑锁
     pub async fn acquire_lock(
         &self,
         doc_id: Uuid,
@@ -68,7 +68,7 @@ impl DocumentLockManager {
 
         let lock_data = serde_json::to_string(&lock_info)?;
 
-        // Try to set the key with NX (only if not exists) and EX (expiration)
+        // 使用 NX（仅在不存在时设置）和 EX（设置过期时间）尝试写入键
         let mut conn = self.redis.clone();
         let result: Option<String> = conn
             .set_options(
@@ -101,23 +101,23 @@ impl DocumentLockManager {
         }
     }
 
-    /// Extend lock TTL (heartbeat)
+    /// 续期编辑锁（心跳）
     pub async fn heartbeat(&self, doc_id: Uuid, lock_id: &str) -> LockResult<()> {
         let key = Self::lock_key(doc_id);
         let mut conn = self.redis.clone();
 
-        // Get current lock info
+        // 获取当前锁信息
         let lock_data: Option<String> = conn.get(&key).await?;
 
         let lock_data = lock_data.ok_or(LockError::LockNotFound)?;
         let current_lock: LockInfo = serde_json::from_str(&lock_data)?;
 
-        // Verify lock ownership
+        // 验证锁的归属
         if current_lock.lock_id != lock_id {
             return Err(LockError::InvalidLockId);
         }
 
-        // Extend TTL
+        // 延长过期时间
         let _: bool = conn.expire(&key, LOCK_TTL_SECONDS as i64).await?;
 
         tracing::debug!(
@@ -129,23 +129,23 @@ impl DocumentLockManager {
         Ok(())
     }
 
-    /// Release lock explicitly
+    /// 显式释放编辑锁
     pub async fn release_lock(&self, doc_id: Uuid, lock_id: &str) -> LockResult<()> {
         let key = Self::lock_key(doc_id);
         let mut conn = self.redis.clone();
 
-        // Get current lock info to verify ownership
+        // 获取当前锁信息以验证归属
         let lock_data: Option<String> = conn.get(&key).await?;
 
         if let Some(lock_data) = lock_data {
             let current_lock: LockInfo = serde_json::from_str(&lock_data)?;
 
-            // Only allow releasing if lock_id matches
+            // 仅允许 lock_id 匹配时释放
             if current_lock.lock_id != lock_id {
                 return Err(LockError::InvalidLockId);
             }
 
-            // Delete the lock
+            // 删除锁
             let _: u32 = conn.del(&key).await?;
 
             tracing::info!(
@@ -159,7 +159,7 @@ impl DocumentLockManager {
         Ok(())
     }
 
-    /// Get current lock information
+    /// 获取当前锁信息
     pub async fn get_lock_info(&self, doc_id: Uuid) -> LockResult<Option<LockInfo>> {
         let key = Self::lock_key(doc_id);
         let mut conn = self.redis.clone();
@@ -175,7 +175,7 @@ impl DocumentLockManager {
         }
     }
 
-    /// Force release lock (admin/emergency use)
+    /// 强制释放锁（管理员/紧急情况使用）
     pub async fn force_release(&self, doc_id: Uuid) -> LockResult<()> {
         let key = Self::lock_key(doc_id);
         let mut conn = self.redis.clone();
@@ -194,8 +194,8 @@ impl DocumentLockManager {
 mod tests {
     use super::*;
 
-    // Note: These tests require a running Redis instance
-    // They are integration tests and should be run with `cargo test --ignored`
+    // 注意：这些测试需要运行中的 Redis 实例
+    // 属于集成测试，应使用 `cargo test --ignored` 运行
 
     #[tokio::test]
     #[ignore]
@@ -208,7 +208,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let user_email = "test@example.com".to_string();
 
-        // Acquire lock
+        // 获取锁
         let lock_info = manager
             .acquire_lock(doc_id, user_id, user_email.clone())
             .await
@@ -217,10 +217,10 @@ mod tests {
         assert_eq!(lock_info.user_id, user_id);
         assert_eq!(lock_info.user_email, user_email);
 
-        // Release lock
+        // 释放锁
         manager.release_lock(doc_id, &lock_info.lock_id).await.unwrap();
 
-        // Verify lock is released
+        // 验证锁已释放
         let info = manager.get_lock_info(doc_id).await.unwrap();
         assert!(info.is_none());
     }
@@ -236,20 +236,20 @@ mod tests {
         let user1_id = Uuid::new_v4();
         let user2_id = Uuid::new_v4();
 
-        // User 1 acquires lock
+        // 用户 1 获取锁
         let lock1 = manager
             .acquire_lock(doc_id, user1_id, "user1@example.com".to_string())
             .await
             .unwrap();
 
-        // User 2 tries to acquire - should fail
+        // 用户 2 尝试获取锁 - 应失败
         let result = manager
             .acquire_lock(doc_id, user2_id, "user2@example.com".to_string())
             .await;
 
         assert!(matches!(result, Err(LockError::LockHeld)));
 
-        // Clean up
+        // 清理
         manager.release_lock(doc_id, &lock1.lock_id).await.unwrap();
     }
 
@@ -268,14 +268,14 @@ mod tests {
             .await
             .unwrap();
 
-        // Send heartbeat
+        // 发送心跳
         manager.heartbeat(doc_id, &lock_info.lock_id).await.unwrap();
 
-        // Verify lock still exists
+        // 验证锁仍然存在
         let info = manager.get_lock_info(doc_id).await.unwrap();
         assert!(info.is_some());
 
-        // Clean up
+        // 清理
         manager.release_lock(doc_id, &lock_info.lock_id).await.unwrap();
     }
 }

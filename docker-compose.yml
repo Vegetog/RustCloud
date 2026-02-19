@@ -1,6 +1,6 @@
 services:
   # =====================
-  # Infrastructure
+  # 基础设施
   # =====================
   postgres:
     image: postgres:14-alpine
@@ -76,7 +76,7 @@ services:
       - postgres
 
   # =====================
-  # Database Migration
+  # 数据库迁移
   # =====================
   migration:
     image: rust:1.93-bookworm
@@ -95,7 +95,7 @@ services:
     restart: "no"
 
   # =====================
-  # Backend API (cargo-watch hot reload)
+  # 后端 API（cargo-watch 热重载）
   # =====================
   api:
     image: rust:1.93-bookworm
@@ -140,7 +140,7 @@ services:
       "
 
   # =====================
-  # Frontend (Vite dev server with HMR)
+  # 前端（Vite 开发服务器，支持 HMR 热更新）
   # =====================
   web:
     image: node:22-alpine
