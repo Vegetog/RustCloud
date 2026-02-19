@@ -37,7 +37,7 @@ cp .env.example .env
 ### 3. 启动依赖服务
 
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+docker-compose up -d
 ```
 
 这将启动：
@@ -47,7 +47,7 @@ docker-compose -f docker-compose.dev.yml up -d
 
 验证服务健康：
 ```bash
-docker-compose -f docker-compose.dev.yml ps
+docker-compose ps
 ```
 
 ### 4. 运行数据库迁移
@@ -176,7 +176,7 @@ rustcloud/
 │   ├── rustcloud-database/      # SeaORM 数据库层
 │   │   └── migration/           # 数据库迁移
 │   └── rustcloud-api/           # Axum REST API 服务
-├── docker-compose.dev.yml       # 开发环境依赖服务
+├── docker-compose.yml           # Docker 全容器化部署
 ├── .env.example                 # 环境变量模板
 ├── TODO.md                      # 开发清单
 └── TEST_REPORT.md               # 测试报告
@@ -230,7 +230,7 @@ lsof -i :6379  # Redis
 lsof -i :8080  # API 服务
 
 # 停止服务
-docker-compose -f docker-compose.dev.yml down
+docker-compose down
 pkill -f "cargo run"
 ```
 
@@ -238,7 +238,7 @@ pkill -f "cargo run"
 
 ```bash
 # 重启 PostgreSQL
-docker-compose -f docker-compose.dev.yml restart postgres
+docker-compose restart postgres
 
 # 检查数据库状态
 docker exec rustcloud-postgres pg_isready -U rustcloud
@@ -248,13 +248,13 @@ docker exec rustcloud-postgres pg_isready -U rustcloud
 
 ```bash
 # 停止所有服务
-docker-compose -f docker-compose.dev.yml down -v
+docker-compose down -v
 
 # 清理编译缓存
 cargo clean
 
 # 重新启动
-docker-compose -f docker-compose.dev.yml up -d
+docker-compose up -d
 cd crates/rustcloud-database/migration && cargo run && cd ../../..
 cargo run -p rustcloud-api
 ```

@@ -14,7 +14,7 @@
   - [x] rustcloud-auth
   - [x] rustcloud-database
   - [x] rustcloud-api
-- [x] 创建 `docker-compose.dev.yml`（开发环境依赖）
+- [x] 创建 `docker-compose.yml`（Docker 全容器化部署）
 - [x] 创建 `.env.example` 配置模板
 - [x] 验证开发环境能正常启动
 
@@ -153,19 +153,19 @@
 
 ---
 
-## 阶段十：Docker 一键部署
+## 阶段十：Docker 全容器化部署 ✅
 
-- [ ] 后端多阶段 Dockerfile
-- [ ] 前端多阶段 Dockerfile（Nginx 托管）
-- [ ] `docker-compose.yml`（生产环境）
-  - [ ] rustcloud-api 服务
-  - [ ] rustcloud-web 服务
-  - [ ] PostgreSQL 服务
-  - [ ] Redis 服务
-  - [ ] MinIO 服务
-- [ ] 环境变量配置说明
-- [ ] 一键启动脚本 (`start.sh`)
-- [ ] 部署文档 (`DEPLOY.md`)
+- [x] 后端多阶段 Dockerfile (`Dockerfile.api`)
+- [x] 前端多阶段 Dockerfile (`Dockerfile.web`, Nginx 托管)
+- [x] `docker-compose.yml`（全容器化部署）
+  - [x] rustcloud-api 服务（cargo-watch 热重载）
+  - [x] rustcloud-web 服务（Vite HMR）
+  - [x] PostgreSQL 服务
+  - [x] Redis 服务
+  - [x] MinIO 服务 + 自动初始化
+  - [x] 数据库迁移服务
+  - [x] Adminer 数据库管理工具
+- [x] 环境变量配置
 
 ---
 
@@ -173,7 +173,7 @@
 
 - 每完成一个模块，运行 `cargo test --all` 验证
 - 前后端联调通过后勾选对应项
-- 最终通过 `docker-compose up` 一键启动验证
+- 最终通过 `docker-compose up -d` 一键启动验证
 
 ---
 
@@ -188,4 +188,4 @@
 | rustcloud-database | ~600 | ~800 | ✅ |
 | rustcloud-api | ~1200 | ~1500 | ✅ |
 | web 前端 | ~800 | ~1350 | ✅ |
-| **总计** | **~4400** | **~5620** | **7/10** |
+| **总计** | **~4400** | **~5620** | **8/10** |

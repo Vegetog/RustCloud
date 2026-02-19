@@ -52,59 +52,26 @@ node --version
 npm --version
 ```
 
-### 2.3 启动依赖服务 (Docker)
+### 2.3 启动所有服务 (Docker)
+
+项目已配置 `docker-compose.yml`，包含所有基础设施和应用服务：
 
 ```bash
-# 创建 docker-compose.yml
-cat > docker-compose.yml << 'EOF'
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:14-alpine
-    container_name: rustcloud-postgres
-    environment:
-      POSTGRES_USER: rustcloud
-      POSTGRES_PASSWORD: rustcloud_dev
-      POSTGRES_DB: rustcloud
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    container_name: rustcloud-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-  minio:
-    image: minio/minio:latest
-    container_name: rustcloud-minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio_data:/data
-
-volumes:
-  postgres_data:
-  redis_data:
-  minio_data:
-EOF
-
-# 启动服务
+# 启动所有服务（基础设施 + 数据库迁移 + 后端 API + 前端）
 docker-compose up -d
 
 # 验证服务状态
 docker-compose ps
+
+# 查看日志
+docker-compose logs -f api
 ```
+
+启动后可访问：
+- **前端**: http://localhost:3000
+- **后端 API**: http://localhost:8080
+- **MinIO 控制台**: http://localhost:9001 (minioadmin/minioadmin)
+- **Adminer (数据库管理)**: http://localhost:8081
 
 ### 2.4 安装开发工具
 
@@ -401,7 +368,7 @@ RUST_LOG=sqlx=debug cargo run
 # 检查服务状态
 docker-compose ps
 
-# 查看日志
+# 查看 PostgreSQL 日志
 docker-compose logs postgres
 
 # 手动连接测试

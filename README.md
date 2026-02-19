@@ -37,55 +37,27 @@ RustCloud 是一个采用零知识架构的加密云存储系统，提供端到�
 - Docker & Docker Compose
 - 8GB+ RAM
 
-### 一键启动（推荐）
-
-使用启动脚本自动启动所有服务（Docker依赖 + 后端API + 前端）：
+### Docker 一键启动（推荐）
 
 ```bash
 # 1. 克隆项目
 git clone https://github.com/your-org/rustcloud.git
 cd rustcloud
 
-# 2. 配置环境
-cp .env.example .env
-
-# 3. 给脚本添加执行权限
-chmod +x start-dev.sh stop-dev.sh
-
-# 4. 一键启动开发环境
-./start-dev.sh
+# 2. 启动所有服务（基础设施 + 数据库迁移 + 后端 API + 前端）
+docker-compose up -d
 ```
 
 启动后访问：
 - **前端**: http://localhost:3000
 - **后端 API**: http://localhost:8080
 - **MinIO 控制台**: http://localhost:9001 (minioadmin/minioadmin)
+- **Adminer (数据库管理)**: http://localhost:8081
 
 停止所有服务：
 ```bash
-./stop-dev.sh
+docker-compose down
 ```
-
-<details>
-<summary>📖 手动启动（点击展开）</summary>
-
-如果需要手动启动各个服务：
-
-```bash
-# 1. 启动 Docker 依赖服务
-docker-compose -f docker-compose.dev.yml up -d
-
-# 2. 运行数据库迁移
-cd crates/rustcloud-database/migration && cargo run && cd ../../..
-
-# 3. 启动后端 API 服务
-RUST_LOG=rustcloud=debug cargo run --bin rustcloud-api
-
-# 4. 启动前端开发服务器（新终端）
-cd web && npm install && npm run dev
-```
-
-</details>
 
 📖 **详细指南**: [QUICKSTART.md](./QUICKSTART.md)
 
@@ -245,8 +217,10 @@ cargo tarpaulin --all
 rustcloud/
 ├── crates/              # Rust workspace 成员
 ├── docs/                # 文档
-├── docker-compose.dev.yml
-├── .env.example
+├── web/                 # React 前端
+├── docker-compose.yml   # Docker 全容器化部署
+├── Dockerfile.api       # 后端构建镜像
+├── Dockerfile.web       # 前端构建镜像
 ├── Cargo.toml           # Workspace 配置
 ├── README.md
 ├── TODO.md
@@ -280,25 +254,20 @@ cargo doc --no-deps --open
 
 ## 🚀 部署
 
-### Docker 部署（推荐）
+### Docker 部署
 
 ```bash
-# 使用 docker-compose 一键部署
+# 启动所有服务
 docker-compose up -d
-```
 
-### 手动部署
+# 查看日志
+docker-compose logs -f api
 
-```bash
-# 构建发布版本
-cargo build --release
+# 停止所有服务
+docker-compose down
 
-# 运行迁移
-cd crates/rustcloud-database/migration
-cargo run --release
-
-# 启动服务
-./target/release/rustcloud-api
+# 重建并启动（代码更新后）
+docker-compose up -d --build
 ```
 
 ---
