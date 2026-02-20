@@ -1,6 +1,7 @@
 // 文档管理主页面
 
 import { useEffect, useRef, useState } from 'react';
+import { isAxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
   Cloud,
@@ -35,6 +36,9 @@ import { PreviewModal } from '../components/PreviewModal';
 import { DocumentEditorModal } from '../components/DocumentEditorModal';
 import { apiService } from '../services/api';
 import { CryptoService } from '../services/crypto';
+import type { Document } from '../types/document';
+
+type DocumentWithEncryptedKey = Document & { encrypted_key: string };
 
 export function DocumentsPage() {
   const navigate = useNavigate();
@@ -62,14 +66,14 @@ export function DocumentsPage() {
   const [shareEncryptedKey, setShareEncryptedKey] = useState<string | null>(null);
 
   // 预览弹窗状态
-  const [previewDocument, setPreviewDocument] = useState<any | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<DocumentWithEncryptedKey | null>(null);
 
   // 编辑器弹窗状态
-  const [editingDocument, setEditingDocument] = useState<any | null>(null);
+  const [editingDocument, setEditingDocument] = useState<DocumentWithEncryptedKey | null>(null);
 
   useEffect(() => {
     loadDocuments(1);
-  }, []);
+  }, [loadDocuments]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,7 +91,7 @@ export function DocumentsPage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-    } catch (err) {
+    } catch {
       // 错误由 状态仓库处理
     }
   };
@@ -106,8 +110,13 @@ export function DocumentsPage() {
       setShareDocumentId(documentId);
       setShareEncryptedKey(encryptedKey);
       setShareModalOpen(true);
-    } catch (err: any) {
-      alert('获取文档信息失败：' + (err.response?.data?.message || err.message));
+    } catch (err) {
+      const message = isAxiosError(err)
+        ? ((err.response?.data as { message?: string } | undefined)?.message || err.message)
+        : err instanceof Error
+          ? err.message
+          : '未知错误';
+      alert('获取文档信息失败：' + message);
     }
   };
 
@@ -117,7 +126,7 @@ export function DocumentsPage() {
     setShareEncryptedKey(null);
   };
 
-  const handlePreview = async (doc: any) => {
+  const handlePreview = async (doc: Document) => {
     try {
       // 获取文档详情以取得 加密密钥（列表响应中不包含）
       const response = await apiService.getDocumentDetail(doc.id);
@@ -128,8 +137,13 @@ export function DocumentsPage() {
         ...doc,
         encrypted_key: documentDetail.encrypted_key,
       });
-    } catch (err: any) {
-      alert('获取文档信息失败：' + (err.response?.data?.message || err.message));
+    } catch (err) {
+      const message = isAxiosError(err)
+        ? ((err.response?.data as { message?: string } | undefined)?.message || err.message)
+        : err instanceof Error
+          ? err.message
+          : '未知错误';
+      alert('获取文档信息失败：' + message);
     }
   };
 
@@ -145,7 +159,7 @@ export function DocumentsPage() {
     );
   };
 
-  const handleEdit = async (doc: any) => {
+  const handleEdit = async (doc: Document) => {
     try {
       const { privateKey } = useAuthStore.getState();
 
@@ -198,9 +212,14 @@ export function DocumentsPage() {
         encrypted_key: documentDetail.encrypted_key,
         decrypted_name: decryptedName,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Edit error:', err);
-      alert('获取文档信息失败：' + (err.response?.data?.message || err.message));
+      const message = isAxiosError(err)
+        ? ((err.response?.data as { message?: string } | undefined)?.message || err.message)
+        : err instanceof Error
+          ? err.message
+          : '未知错误';
+      alert('获取文档信息失败：' + message);
     }
   };
 
@@ -588,7 +607,7 @@ export function DocumentsPage() {
       {editingDocument && (
         <DocumentEditorModal
           documentId={editingDocument.id}
-          fileName={editingDocument.decrypted_name}
+          fileName={editingDocument.decrypted_name || editingDocument.encrypted_name}
           encryptedKey={editingDocument.encrypted_key}
           encryptedName={editingDocument.encrypted_name}
           nameNonce={editingDocument.name_nonce}

@@ -1,55 +1,24 @@
-# rustcloud-crypto 模块设计
+# rustcloud-crypto 模块（当前实现）
 
-## 一、模块职责
+## 职责（后端）
 
-当前后端仅保留以下密码学职责（与纯前端 E2EE 方案一致）：
+当前后端仅保留：
 
-- 密码哈希：Argon2id（用于用户登录与分享密码校验）
-- 哈希计算：SHA-256（用于对象存储完整性校验）
+- `hash_password(password)`：Argon2id 密码哈希
+- `verify_password(password, hash)`：密码校验
+- `sha256_hash / sha256_hash_hex`：SHA-256 计算
 
-文档内容加解密、DEK 生成/封装、RSA 私钥加解密均在前端完成，后端仅保存与转发密文。
+## 非职责（已迁出）
 
-## 二、主要接口
+以下不再由后端 `rustcloud-crypto` 承担：
 
-### 2.1 密码哈希
+- 文档 AES 加解密
+- RSA 密钥对生成/DEK 封装
+- MasterKey/DocumentKey 运行时结构
 
-```rust
-fn hash_password(password: &str) -> Result<String>
-fn verify_password(password: &str, hash: &str) -> Result<bool>
-```
+这些能力在当前架构中由前端 `web/src/services/crypto.ts` 使用 Web Crypto API 完成。
 
-说明：
+## 边界说明
 
-- 使用 Argon2id 生成 PHC 格式哈希字符串
-- 验证时从 PHC 字符串读取参数并校验
-
-### 2.2 SHA-256
-
-```rust
-fn sha256_hash(data: &[u8]) -> [u8; 32]
-fn sha256_hash_hex(data: &[u8]) -> String
-```
-
-说明：
-
-- 用于存储层计算内容摘要与完整性比对
-
-## 三、依赖关系
-
-```text
-rustcloud-crypto
-├── 依赖
-│   └── rustcloud-core        # 错误类型
-├── 外部依赖
-│   ├── argon2                # 密码哈希
-│   ├── sha2                  # SHA-256
-│   └── hex                   # 十六进制编码
-└── 被依赖
-    ├── rustcloud-auth        # 密码哈希/校验
-    └── rustcloud-storage     # SHA-256 哈希
-```
-
-## 四、设计说明
-
-- 纯前端 E2EE 下，服务端不持有明文 DEK，不执行文档内容解密。
-- 后端接口中 `encrypted_key` 字段仅作为密文存取字段。
+- 认证密码：后端 Argon2（`rustcloud-auth` 调用）
+- 文件加密：前端 E2EE

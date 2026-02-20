@@ -118,7 +118,7 @@ impl DocumentLockManager {
         }
 
         // 延长过期时间
-        let _: bool = conn.expire(&key, LOCK_TTL_SECONDS as i64).await?;
+        let _: bool = conn.expire(&key, LOCK_TTL_SECONDS).await?;
 
         tracing::debug!(
             doc_id = %doc_id,

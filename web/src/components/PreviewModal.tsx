@@ -1,6 +1,6 @@
 // 预览弹窗：零知识加密的客户端文档预览
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { cryptoService } from '../services/crypto';
@@ -28,17 +28,14 @@ export function PreviewModal({
   onClose,
 }: PreviewModalProps) {
   const { privateKey } = useAuthStore();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(privateKey));
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!privateKey) {
-      setError('未找到解密密钥');
-      setLoading(false);
-      return;
-    }
+    if (!privateKey) return;
 
     async function loadPreview() {
       try {
@@ -72,18 +69,23 @@ export function PreviewModal({
           // 二进制文件：创建 Blob URL（完全离线）
           const blob = new Blob([content], { type: mimeType });
           const url = URL.createObjectURL(blob);
+          if (previewUrlRef.current) {
+            URL.revokeObjectURL(previewUrlRef.current);
+          }
+          previewUrlRef.current = url;
           setPreviewUrl(url);
           console.log('[Preview] Created Blob URL:', url);
         }
 
         setLoading(false);
-      } catch (err: any) {
+      } catch (err) {
         console.error('[Preview] Failed:', err);
+        const message = err instanceof Error ? err.message : '预览失败';
         // 检查是否为解密错误（可能是内容已更新）
-        if (err.name === 'OperationError' || err.message?.includes('decrypt')) {
+        if (err instanceof Error && (err.name === 'OperationError' || err.message.includes('decrypt'))) {
           setError('文件内容已更新，请关闭后刷新文档列表重试');
         } else {
-          setError(err.message || '预览失败');
+          setError(message);
         }
         setLoading(false);
       }
@@ -93,8 +95,9 @@ export function PreviewModal({
 
     // 清理：组件卸载时释放 Blob URL（安全实践）
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
         console.log('[Preview] Revoked Blob URL');
       }
     };
@@ -224,6 +227,12 @@ export function PreviewModal({
                   <div className="text-sm text-red-500">{error}</div>
                 </>
               )}
+            </div>
+          ) : !privateKey ? (
+            <div className="text-center max-w-md">
+              <div className="text-red-600 text-4xl mb-4">🔐</div>
+              <div className="text-lg font-medium text-red-600 mb-2">未找到解密密钥</div>
+              <div className="text-sm text-red-500">请重新登录后再试</div>
             </div>
           ) : (
             renderPreview()

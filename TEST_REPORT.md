@@ -1,5 +1,13 @@
 # RustCloud API 测试报告
 
+## 当前状态更正（必读）
+
+- 本报告为历史测试快照，不等同于当前 HEAD 的完整真实状态。
+- 当前后端 `rustcloud-crypto` 已收敛为密码哈希与 SHA-256；报告中若出现后端文档 AES/RSA 能力，请以源码为准。
+- 认证链路中：
+  - 前端使用 PBKDF2 派生 `MasterKey`
+  - 后端使用 Argon2 进行 `password_hash` 校验
+
 **测试日期**: 2026年1月16日  
 **测试人员**: Claude Code  
 **版本**: v0.1.0

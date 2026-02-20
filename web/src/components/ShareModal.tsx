@@ -1,6 +1,7 @@
 // 分享弹窗：创建分享链接并授予用户权限
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react';
+import { isAxiosError } from 'axios';
 import {
   X,
   Lock,
@@ -33,6 +34,38 @@ interface SharedUser {
   granted_at: string;
 }
 
+interface LinkSharingContentProps {
+  error: string | null;
+  shareLink: string | null;
+  copied: boolean;
+  usePassword: boolean;
+  setUsePassword: Dispatch<SetStateAction<boolean>>;
+  password: string;
+  setPassword: Dispatch<SetStateAction<string>>;
+  useExpiration: boolean;
+  setUseExpiration: Dispatch<SetStateAction<boolean>>;
+  expirationHours: number;
+  setExpirationHours: Dispatch<SetStateAction<number>>;
+  useMaxAccess: boolean;
+  setUseMaxAccess: Dispatch<SetStateAction<boolean>>;
+  maxAccessCount: number;
+  setMaxAccessCount: Dispatch<SetStateAction<number>>;
+  onCopy: () => void;
+}
+
+interface UserSharingContentProps {
+  error: string | null;
+  targetEmail: string;
+  setTargetEmail: Dispatch<SetStateAction<string>>;
+  permissionLevel: 'read' | 'write';
+  setPermissionLevel: Dispatch<SetStateAction<'read' | 'write'>>;
+  sharedUsers: SharedUser[];
+  loadingUsers: boolean;
+  grantingPermission: boolean;
+  onGrantPermission: () => void;
+  onRevokePermission: (userId: string) => void;
+}
+
 export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProps) {
   const { privateKey, publicKey } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ShareTab>('link');
@@ -57,24 +90,24 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   // 切换到用户标签时加载已授权用户
-  useEffect(() => {
-    if (activeTab === 'user') {
-      loadSharedUsers();
-    }
-  }, [activeTab]);
-
-  const loadSharedUsers = async () => {
+  const loadSharedUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
       const response = await apiService.getDocumentPermissions(documentId);
       setSharedUsers(response.data.data);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load shared users:', err);
       setError('获取授权列表失败');
     } finally {
       setLoadingUsers(false);
     }
-  };
+  }, [documentId]);
+
+  useEffect(() => {
+    if (activeTab === 'user') {
+      void loadSharedUsers();
+    }
+  }, [activeTab, loadSharedUsers]);
 
   const handleCreateShare = async () => {
     if (!privateKey || !publicKey) {
@@ -142,9 +175,14 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
 
       setShareLink(shareUrl);
       setLoading(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to create share:', err);
-      setError(err.response?.data?.message || '创建分享链接失败');
+      const message = isAxiosError(err)
+        ? ((err.response?.data as { message?: string } | undefined)?.message || err.message)
+        : err instanceof Error
+          ? err.message
+          : '创建分享链接失败';
+      setError(message);
       setLoading(false);
     }
   };
@@ -187,9 +225,13 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
       setPermissionLevel('read');
 
       setGrantingPermission(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to grant permission:', err);
-      const errorMsg = err.response?.data?.message || '授权失败';
+      const errorMsg = isAxiosError(err)
+        ? ((err.response?.data as { message?: string } | undefined)?.message || err.message)
+        : err instanceof Error
+          ? err.message
+          : '授权失败';
 
       if (errorMsg.includes('User not found')) {
         setError('用户不存在，请检查邮箱地址');
@@ -211,9 +253,14 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
     try {
       await apiService.revokePermission(documentId, userId);
       await loadSharedUsers();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to revoke permission:', err);
-      setError(err.response?.data?.message || '撤销权限失败');
+      const message = isAxiosError(err)
+        ? ((err.response?.data as { message?: string } | undefined)?.message || err.message)
+        : err instanceof Error
+          ? err.message
+          : '撤销权限失败';
+      setError(message);
     }
   };
 
@@ -376,7 +423,7 @@ function LinkSharingContent({
   maxAccessCount,
   setMaxAccessCount,
   onCopy,
-}: any) {
+}: LinkSharingContentProps) {
   return (
     <div className="space-y-5">
       {error && (
@@ -568,7 +615,7 @@ function UserSharingContent({
   grantingPermission,
   onGrantPermission,
   onRevokePermission,
-}: any) {
+}: UserSharingContentProps) {
   return (
     <div className="space-y-5">
       {error && (

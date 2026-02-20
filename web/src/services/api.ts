@@ -3,7 +3,13 @@
 
 import axios, { type AxiosInstance, AxiosError } from 'axios';
 import type { RegisterRequest, LoginResponse } from '../types/auth';
-import type { DocumentListResponse, DocumentDetailResponse, CreateShareRequest } from '../types/document';
+import type {
+  DocumentListResponse,
+  DocumentDetailResponse,
+  CreateShareRequest,
+  UploadMetadata,
+  ShareLink,
+} from '../types/document';
 
 class ApiService {
   private client: AxiosInstance;
@@ -50,7 +56,7 @@ class ApiService {
               // 使用新令牌重试原请求
               originalRequest.headers.Authorization = `Bearer ${access_token}`;
               return this.client.request(originalRequest);
-            } catch (refreshError) {
+            } catch {
               // 刷新失败，清除令牌并跳转到登录页
               sessionStorage.removeItem('accessToken');
               sessionStorage.removeItem('refreshToken');
@@ -73,7 +79,7 @@ class ApiService {
    * 注册新用户
    */
   async register(data: RegisterRequest) {
-    return this.client.post<{ success: boolean; data: { user: any } }>(
+    return this.client.post<{ success: boolean; data: { user: LoginResponse['user'] } }>(
       '/auth/register',
       data
     );
@@ -110,7 +116,7 @@ class ApiService {
    * 获取当前用户信息
    */
   async getMe() {
-    return this.client.get<{ success: boolean; data: { user: any } }>('/auth/me');
+    return this.client.get<{ success: boolean; data: { user: LoginResponse['user'] } }>('/auth/me');
   }
 
   /**
@@ -138,12 +144,12 @@ class ApiService {
   /**
    * 上传加密文档
    */
-  async uploadDocument(file: Blob, metadata: any) {
+  async uploadDocument(file: Blob, metadata: UploadMetadata) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('metadata', JSON.stringify(metadata));
 
-    return this.client.post<{ success: boolean; data: any }>(
+    return this.client.post<{ success: boolean; data: DocumentDetailResponse['document'] }>(
       '/documents',
       formData,
       {
@@ -305,21 +311,33 @@ class ApiService {
    * 创建分享链接
    */
   async createShare(data: CreateShareRequest) {
-    return this.client.post<{ success: boolean; data: any }>('/shares', data);
+    return this.client.post<{ success: boolean; data: ShareLink }>('/shares', data);
   }
 
   /**
    * 获取当前用户的所有分享链接
    */
   async getShares() {
-    return this.client.get<{ success: boolean; data: any[] }>('/shares');
+    return this.client.get<{ success: boolean; data: ShareLink[] }>('/shares');
   }
 
   /**
    * 访问分享链接（公开访问，无需认证）
    */
   async accessShare(token: string, password?: string) {
-    return this.client.get<{ success: boolean; data: any }>(`/shares/access/${token}`, {
+    return this.client.get<{
+      success: boolean;
+      data: {
+        document_id: string;
+        encrypted_key: string;
+        encrypted_name: string;
+        name_nonce: string;
+        content_nonce: string;
+        content_hash: string;
+        size: number;
+        mime_type: string;
+      };
+    }>(`/shares/access/${token}`, {
       params: password ? { password } : undefined,
     });
   }

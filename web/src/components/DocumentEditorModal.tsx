@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isAxiosError } from 'axios';
 import { X, Loader2, Save, Code2, AlertCircle, Lock } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { CryptoService } from '../services/crypto';
@@ -101,19 +102,24 @@ export function DocumentEditorModal({
           setLockError(`文档正在被 ${data.locked_by} 编辑（${data.locked_at}）`);
           setLoading(false);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to acquire lock:', err);
 
         // 处理 409 锁冲突 - 提取锁持有者信息
-        if (err.response?.status === 409) {
-          const data = err.response.data?.data;
+        if (isAxiosError(err) && err.response?.status === 409) {
+          const data = (err.response.data as { data?: { locked_by?: string } } | undefined)?.data;
           if (data?.locked_by) {
             setLockError(`文档正在被 ${data.locked_by} 编辑`);
           } else {
             setLockError('文档正在被其他用户编辑');
           }
         } else {
-          setLockError('获取编辑锁失败：' + (err.response?.data?.error?.message || err.message || '未知错误'));
+          const message = isAxiosError(err)
+            ? ((err.response?.data as { error?: { message?: string } } | undefined)?.error?.message || err.message)
+            : err instanceof Error
+              ? err.message
+              : '未知错误';
+          setLockError('获取编辑锁失败：' + message);
         }
         setLoading(false);
       }
@@ -187,9 +193,9 @@ export function DocumentEditorModal({
         setContent(textContent);
         setOriginalContent(textContent);
         setLoading(false);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to load document:', err);
-        setError('加载文档失败：' + (err.message || '未知错误'));
+        setError('加载文档失败：' + (err instanceof Error ? err.message : '未知错误'));
         setLoading(false);
       }
     }
@@ -281,16 +287,21 @@ export function DocumentEditorModal({
       // 8. 成功
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save document:', err);
 
       // 处理冲突
-      if (err.response?.status === 409) {
-        const msg = err.response.data?.error?.message || '文档已被他人修改';
+      if (isAxiosError(err) && err.response?.status === 409) {
+        const msg = (err.response.data as { error?: { message?: string } } | undefined)?.error?.message || '文档已被他人修改';
         setError(`保存冲突：${msg}。请刷新后重试。`);
       } else {
+        const message = isAxiosError(err)
+          ? ((err.response?.data as { error?: { message?: string } } | undefined)?.error?.message || err.message)
+          : err instanceof Error
+            ? err.message
+            : '未知错误';
         setError(
-          '保存失败：' + (err.response?.data?.error?.message || err.message || '未知错误')
+          '保存失败：' + message
         );
       }
       setSaving(false);

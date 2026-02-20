@@ -165,9 +165,11 @@ mod tests {
 
     #[test]
     fn test_document_list_params_offset() {
-        let mut params = DocumentListParams::default();
-        params.page = 1;
-        params.page_size = 10;
+        let mut params = DocumentListParams {
+            page: 1,
+            page_size: 10,
+            ..Default::default()
+        };
         assert_eq!(params.offset(), 0);
 
         params.page = 2;
@@ -179,9 +181,11 @@ mod tests {
 
     #[test]
     fn test_document_list_params_offset_underflow() {
-        let mut params = DocumentListParams::default();
-        params.page = 0;
-        params.page_size = 10;
+        let params = DocumentListParams {
+            page: 0,
+            page_size: 10,
+            ..Default::default()
+        };
         assert_eq!(params.offset(), 0);
     }
 }

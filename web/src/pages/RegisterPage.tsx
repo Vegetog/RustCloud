@@ -50,7 +50,7 @@ export function RegisterPage() {
     try {
       await register(email, password);
       navigate('/documents');
-    } catch (err) {
+    } catch {
       // 错误由 状态仓库处理
     }
   };

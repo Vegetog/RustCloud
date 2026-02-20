@@ -174,7 +174,7 @@ pub async fn refresh(
         .find_by_id(user_id)
         .await
         .map_err(ApiError::from)?
-        .ok_or_else(|| ApiError::invalid_token())?;
+        .ok_or_else(ApiError::invalid_token)?;
 
     // 4. 生成新令牌
     let (new_pair, _new_access_jti, new_refresh_jti) = state

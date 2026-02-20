@@ -2,6 +2,7 @@
 // 处理文档列表加载、上传、下载和删除
 
 import { create } from 'zustand';
+import { isAxiosError } from 'axios';
 import type { Document } from '../types/document';
 import { apiService } from '../services/api';
 import { CryptoService } from '../services/crypto';
@@ -25,6 +26,22 @@ interface DocumentState {
   clearError: () => void;
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (isAxiosError(error)) {
+    const data = error.response?.data as
+      | { error?: { message?: string }; message?: string }
+      | ArrayBuffer
+      | undefined;
+    if (data && !(data instanceof ArrayBuffer)) {
+      return data.error?.message || data.message || fallback;
+    }
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+}
+
 export const useDocumentStore = create<DocumentState>((set, get) => ({
   // 初始状态
   documents: [],
@@ -45,12 +62,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
       // 在客户端解密文件名
       const privateKey = useAuthStore.getState().privateKey;
-      let documents = data.documents;
+      let documents: Document[] = data.documents;
 
       if (privateKey) {
         const crypto = new CryptoService();
         documents = await Promise.all(
-          data.documents.map(async (doc: any) => {
+          data.documents.map(async (doc: Document) => {
             if (!doc.encrypted_key) return doc;
             try {
               const decrypted_name = await crypto.decryptFileName(
@@ -74,10 +91,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         pageSize: data.page_size,
         loading: false,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to load documents:', error);
       set({
-        error: error.response?.data?.error?.message || '加载文档列表失败',
+        error: getErrorMessage(error, '加载文档列表失败'),
         loading: false,
       });
     }
@@ -124,10 +141,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       await get().loadDocuments(get().page);
 
       set({ loading: false, uploadProgress: 0 });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to upload document:', error);
       set({
-        error: error.response?.data?.error?.message || '文件上传失败',
+        error: getErrorMessage(error, '文件上传失败'),
         loading: false,
         uploadProgress: 0,
       });
@@ -185,27 +202,30 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       a.click();
       window.document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to download document:', error);
 
       // 处理错误消息（arraybuffer 响应需特殊处理）
       let errorMessage = '文件下载失败';
-      if (error.response?.data) {
+      if (isAxiosError(error) && error.response?.data) {
         // 若 responseType 为 arraybuffer，error.response.data 可能是 ArrayBuffer
         if (error.response.data instanceof ArrayBuffer) {
           try {
             const text = new TextDecoder().decode(error.response.data);
-            const json = JSON.parse(text);
+            const json = JSON.parse(text) as { error?: { message?: string }; message?: string };
             errorMessage = json.error?.message || json.message || errorMessage;
           } catch {
             // 解析失败，使用默认消息
           }
-        } else if (error.response.data.error?.message) {
-          errorMessage = error.response.data.error.message;
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
+        } else {
+          const data = error.response.data as { error?: { message?: string }; message?: string };
+          if (data.error?.message) {
+            errorMessage = data.error.message;
+          } else if (data.message) {
+            errorMessage = data.message;
+          }
         }
-      } else if (error.message) {
+      } else if (error instanceof Error && error.message) {
         errorMessage = error.message;
       }
 
@@ -221,10 +241,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
       // 重新加载文档列表
       await get().loadDocuments(get().page);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to delete document:', error);
       set({
-        error: error.response?.data?.error?.message || '文件删除失败',
+        error: getErrorMessage(error, '文件删除失败'),
       });
       throw error;
     }

@@ -1,6 +1,7 @@
 // 分享页面：通过公开链接访问文档
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { isAxiosError } from 'axios';
 import { useParams } from 'react-router-dom';
 import {
   Cloud,
@@ -15,19 +16,26 @@ import {
 import { apiService } from '../services/api';
 import { CryptoService } from '../services/crypto';
 
+interface ShareAccessData {
+  document_id: string;
+  encrypted_key: string;
+  encrypted_name: string;
+  name_nonce: string;
+  content_nonce: string;
+  content_hash: string;
+  size: number;
+  mime_type: string;
+}
+
 export function SharePage() {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [shareData, setShareData] = useState<any>(null);
+  const [shareData, setShareData] = useState<ShareAccessData | null>(null);
   const [password, setPassword] = useState('');
   const [passwordRequired, setPasswordRequired] = useState(false);
 
-  useEffect(() => {
-    loadShare();
-  }, [token]);
-
-  const loadShare = async () => {
+  const loadShare = useCallback(async (passwordOverride?: string) => {
     if (!token) {
       setError('无效的分享链接');
       setLoading(false);
@@ -38,12 +46,16 @@ export function SharePage() {
     setError(null);
 
     try {
-      const response = await apiService.accessShare(token, password || undefined);
+      const response = await apiService.accessShare(token, passwordOverride || undefined);
       setShareData(response.data.data);
       setLoading(false);
-    } catch (err: any) {
-      const status = err.response?.status;
-      const message = err.response?.data?.message;
+    } catch (err) {
+      const status = isAxiosError(err) ? err.response?.status : undefined;
+      const message = isAxiosError(err)
+        ? (err.response?.data as { message?: string } | undefined)?.message
+        : err instanceof Error
+          ? err.message
+          : undefined;
 
       if (status === 401 && message?.includes('password')) {
         setPasswordRequired(true);
@@ -57,11 +69,15 @@ export function SharePage() {
       }
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    loadShare();
+  }, [loadShare]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    loadShare();
+    loadShare(password);
   };
 
   const handleDownload = async () => {
@@ -129,9 +145,9 @@ export function SharePage() {
       URL.revokeObjectURL(url);
 
       setLoading(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Download failed:', err);
-      setError(err.message || '文件下载失败');
+      setError(err instanceof Error ? err.message : '文件下载失败');
       setLoading(false);
     }
   };

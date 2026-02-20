@@ -1,310 +1,76 @@
 # RustCloud
 
-> 基于 Rust 的零知识加密云存储系统
+基于 Rust 的加密云存储系统，采用“前端文件 E2EE + 后端认证与密文存储”架构。
 
-[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-in--development-yellow.svg)]()
+## 当前架构（以代码为准）
 
-RustCloud 是一个采用零知识架构的加密云存储系统，提供端到端加密、细粒度权限控制和安全文档共享功能。这是一个毕业设计项目，旨在展示现代化的 Rust 后端开发和密码学最佳实践。
+- 前端负责：
+  - 生成用户 RSA 密钥对
+  - 使用密码经 PBKDF2 派生 `MasterKey`
+  - 本地加/解密私钥与文档内容
+  - 生成并封装文档密钥（DEK）
+- 后端负责：
+  - 用户注册/登录、JWT、会话管理
+  - 存储与转发密文（包含 `encrypted_key`）
+  - 密码哈希与校验（Argon2id）
+  - 存储层 SHA-256 哈希计算
 
----
+## E2EE 边界说明
 
-## ✨ 三大创新点
+- 文档内容与文件名：端到端加密（服务器不持有明文 DEK）
+- 登录密码：传统认证流程（通过 HTTPS 传输到后端，后端 Argon2 校验）
 
-### 1. 零服务端存储密钥管理
-- **Master Key** 仅在客户端内存中存在，服务器永远无法获取
-- 所有加密操作在客户端完成，服务端只存储加密后的数据
-- 即使服务器被攻破，攻击者也无法解密用户数据
+## 仓库结构
 
-### 2. 分层威胁防护模型
-- **客户端层**: Argon2id 密钥派生 + Web Crypto API
-- **传输层**: JWT Bearer Token + HTTPS
-- **服务器层**: Redis 会话管理 + Token 黑名单 + 数据库访问控制
+```text
+crates/
+  rustcloud-core       # 核心错误/配置/类型
+  rustcloud-crypto     # 后端当前仅: hash_password/verify_password/sha256
+  rustcloud-auth       # JWT、会话、密码强度
+  rustcloud-storage    # Local/MinIO 存储抽象
+  rustcloud-database   # SeaORM 实体、仓库、迁移
+  rustcloud-api        # REST API
+web/                   # React + TypeScript + Web Crypto
+```
 
-### 3. 基于密码学的细粒度权限控制
-- 三级权限模型：Owner / Write / Read
-- 通过 RSA 密钥重加密实现权限分发
-- 无密钥无法解密，安全性数学可证明
-
----
-
-## 🚀 快速启动
-
-### 前置要求
-
-- Rust 1.70+
-- Docker & Docker Compose
-- 8GB+ RAM
-
-### Docker 一键启动（推荐）
+## 快速开始
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/your-org/rustcloud.git
-cd rustcloud
+# 1) 启动服务
+Docker compose up -d
 
-# 2. 启动所有服务（基础设施 + 数据库迁移 + 后端 API + 前端）
-docker-compose up -d
+# 2) 后端检查
+cargo check --workspace
+
+# 3) 前端构建
+cd web && npm install && npm run build
 ```
 
-启动后访问：
-- **前端**: http://localhost:3000
-- **后端 API**: http://localhost:8080
-- **MinIO 控制台**: http://localhost:9001 (minioadmin/minioadmin)
-- **Adminer (数据库管理)**: http://localhost:8081
+默认入口：
+- Web: `http://localhost:3000`
+- API: `http://localhost:8080/api/v1`
 
-停止所有服务：
-```bash
-docker-compose down
-```
-
-📖 **详细指南**: [QUICKSTART.md](./QUICKSTART.md)
-
----
-
-## 🏗️ 架构设计
-
-### 技术栈
-
-| 层次 | 技术 |
-|------|------|
-| 后端语言 | Rust 2021 Edition |
-| Web 框架 | Axum + Tokio |
-| 数据库 | PostgreSQL + SeaORM |
-| 缓存 | Redis |
-| 对象存储 | MinIO (S3 兼容) |
-| 对称加密 | AES-256-GCM |
-| 非对称加密 | RSA-2048 |
-| 密钥派生 | Argon2id |
-| 认证 | JWT (jsonwebtoken) |
-
-### 模块架构
-
-```
-rustcloud/
-├── rustcloud-core         # 核心类型、错误、配置 (~300 行)
-├── rustcloud-crypto       # 加密模块 (~600 行)
-│   ├── AES-256-GCM       # 对称加密
-│   ├── RSA-2048          # 非对称加密
-│   └── Argon2id          # 密钥派生
-├── rustcloud-storage      # 存储抽象 (~400 行)
-│   ├── LocalStorage      # 本地文件系统
-│   └── MinioStorage      # MinIO/S3
-├── rustcloud-auth         # JWT + 会话管理 (~500 行)
-├── rustcloud-database     # SeaORM 数据访问 (~600 行)
-│   ├── entities/         # 数据模型
-│   ├── repositories/     # Repository 模式
-│   └── migration/        # 数据库迁移
-└── rustcloud-api          # REST API 服务 (~1200 行)
-    ├── handlers/         # 路由处理器
-    ├── middleware/       # 认证、CORS
-    └── dto/              # 数据传输对象
-```
-
----
-
-## 📊 当前进度
-
-| 模块 | 状态 | 测试 | 代码量 |
-|------|------|------|--------|
-| rustcloud-core | ✅ 完成 | ✅ 通过 | ~300 行 |
-| rustcloud-crypto | ✅ 完成 | ✅ 25 tests | ~600 行 |
-| rustcloud-storage | ✅ 完成 | ✅ 6 tests | ~400 行 |
-| rustcloud-auth | ✅ 完成 | ✅ 18 tests | ~500 行 |
-| rustcloud-database | ✅ 完成 | ✅ 33 tests | ~600 行 |
-| rustcloud-api | ✅ 完成 | ✅ 10+ tests | ~1200 行 |
-| web 前端 | 🚧 进行中 | - | - |
-
-**总计**: ~3600 行 Rust 代码 | **测试**: 92+ 个测试用例全部通过
-
-📋 **详细清单**: [TODO.md](./TODO.md)  
-📈 **测试报告**: [TEST_REPORT.md](./TEST_REPORT.md)
-
----
-
-## 🎯 核心功能
-
-### ✅ 已实现
-
-- [x] 用户注册和登录
-- [x] JWT 访问令牌 + 刷新令牌
-- [x] Token family 防重放攻击
-- [x] 会话管理（最多 5 个并发会话）
-- [x] Token 黑名单（Redis）
-- [x] 文档列表查询（分页）
-- [x] 细粒度权限控制 (Owner/Write/Read)
-- [x] 错误处理和统一响应格式
-
-### 🚧 进行中
-
-- [ ] 文档上传/下载（客户端加密）
-- [ ] 文档权限管理（跨用户共享）
-- [ ] 分享链接生成和访问
-- [ ] 前端 UI (React + Web Crypto API)
-
----
-
-## 🔒 安全特性
-
-### 加密算法
-
-- **对称加密**: AES-256-GCM (认证加密)
-- **非对称加密**: RSA-2048 (OAEP padding)
-- **密钥派生**: Argon2id (memory: 64MB, iterations: 3, parallelism: 4)
-- **哈希**: SHA-256
-
-### 安全机制
-
-- ✅ 端到端加密（E2EE）
-- ✅ 零知识证明架构
-- ✅ JWT 双 Token 机制
-- ✅ Token family 防重放
-- ✅ 会话限制和黑名单
-- ✅ 密码强度验证
-- ✅ SQL 注入防护（SeaORM 参数化查询）
-- ✅ XSS 防护（输入验证）
-
----
-
-## 📖 文档
-
-- [快速启动指南](./QUICKSTART.md) - 5 分钟快速上手
-- [测试报告](./TEST_REPORT.md) - 完整的测试结果
-- [开发清单](./TODO.md) - 开发进度追踪
-- [架构设计](./docs/README.md) - 系统架构详解
-- [模块文档](./docs/modules/) - 各模块设计文档
-  - [核心模块](./docs/modules/core.md)
-  - [加密模块](./docs/modules/crypto.md) ⭐
-  - [存储模块](./docs/modules/storage.md)
-  - [认证模块](./docs/modules/auth.md)
-  - [数据库模块](./docs/modules/database.md)
-  - [API 模块](./docs/modules/api.md)
-  - [前端模块](./docs/modules/web.md)
-
----
-
-## 🧪 测试
-
-### 运行测试
+## 常用命令
 
 ```bash
-# 运行所有测试
-cargo test --all
+# Rust
+cargo check --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
 
-# 运行特定模块测试
-cargo test -p rustcloud-crypto
-cargo test -p rustcloud-database
-cargo test -p rustcloud-auth
-
-# 查看测试覆盖率
-cargo tarpaulin --all
+# Frontend
+cd web
+npm run build
 ```
 
-### 测试统计
+## 文档索引
 
-- **单元测试**: 92+ 个测试用例
-- **集成测试**: 10+ API 端点测试
-- **成功率**: 100% ✅
+- 快速启动：`QUICKSTART.md`
+- 系统总览：`docs/README.md`
+- 模块文档：`docs/modules/*.md`
+- 环境变量：`docs/environment.md`
+- 流程说明：`docs/flows.md`
 
----
+## 历史文档说明
 
-## 🛠️ 开发
-
-### 项目结构
-
-```
-rustcloud/
-├── crates/              # Rust workspace 成员
-├── docs/                # 文档
-├── web/                 # React 前端
-├── docker-compose.yml   # Docker 全容器化部署
-├── Dockerfile.api       # 后端构建镜像
-├── Dockerfile.web       # 前端构建镜像
-├── Cargo.toml           # Workspace 配置
-├── README.md
-├── TODO.md
-├── TEST_REPORT.md
-└── QUICKSTART.md
-```
-
-### 常用命令
-
-```bash
-# 构建项目
-cargo build
-
-# 运行 API 服务
-cargo run -p rustcloud-api
-
-# 格式化代码
-cargo fmt --all
-
-# 代码检查
-cargo clippy --all -- -D warnings
-
-# 运行测试
-cargo test --all
-
-# 生成文档
-cargo doc --no-deps --open
-```
-
----
-
-## 🚀 部署
-
-### Docker 部署
-
-```bash
-# 启动所有服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f api
-
-# 停止所有服务
-docker-compose down
-
-# 重建并启动（代码更新后）
-docker-compose up -d --build
-```
-
----
-
-## 🤝 贡献
-
-欢迎贡献代码、报告问题或提出建议！
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
----
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
-
----
-
-## 🙏 致谢
-
-- [Axum](https://github.com/tokio-rs/axum) - Web 框架
-- [SeaORM](https://www.sea-ql.org/SeaORM/) - ORM
-- [RustCrypto](https://github.com/RustCrypto) - 加密算法实现
-- [Tokio](https://tokio.rs/) - 异步运行时
-
----
-
-## 📧 联系方式
-
-- **作者**: RustCloud Team
-- **项目**: 毕业设计项目
-- **年份**: 2026
-
----
-
-**⭐ 如果这个项目对你有帮助，请给个 Star！**
+`CHANGELOG.md`、`TODO.md`、`TEST_REPORT.md` 保留历史记录；已追加“当前状态更正”说明，请以最新更正和源码为准。

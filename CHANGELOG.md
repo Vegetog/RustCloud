@@ -1,5 +1,18 @@
 # RustCloud 变更日志
 
+## Post v0.1.0 Corrections（当前代码状态）
+
+> 本节用于纠正历史条目与当前实现的偏差，不改写历史记录。
+
+- 后端 `rustcloud-crypto` 已收敛为：
+  - Argon2 密码哈希/校验
+  - SHA-256 哈希
+- 后端不再提供文档 AES/RSA 加解密实现；文档 E2EE 在前端 Web Crypto 完成。
+- `AppConfig` 不再暴露 `ARGON2_MEMORY/ARGON2_ITERATIONS/ARGON2_PARALLELISM` 配置项。
+- 文档中的“客户端 Argon2 派生 MasterKey”表述已更正为：
+  - 前端：PBKDF2 -> MasterKey
+  - 后端：Argon2 -> password_hash
+
 ## [v0.1.0] - 2026-01-16
 
 ### 🎉 阶段七完成：API 服务实现与测试
