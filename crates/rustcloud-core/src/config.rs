@@ -28,10 +28,6 @@ pub struct AppConfig {
     pub jwt_access_token_ttl: u64,
     pub jwt_refresh_token_ttl: u64,
 
-    // Argon2 参数
-    pub argon2_memory: u32,
-    pub argon2_iterations: u32,
-    pub argon2_parallelism: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -94,19 +90,6 @@ impl AppConfig {
                 .parse()
                 .unwrap_or(604800),
 
-            // Argon2 参数
-            argon2_memory: std::env::var("ARGON2_MEMORY")
-                .unwrap_or_else(|_| "65536".to_string())
-                .parse()
-                .unwrap_or(65536),
-            argon2_iterations: std::env::var("ARGON2_ITERATIONS")
-                .unwrap_or_else(|_| "3".to_string())
-                .parse()
-                .unwrap_or(3),
-            argon2_parallelism: std::env::var("ARGON2_PARALLELISM")
-                .unwrap_or_else(|_| "4".to_string())
-                .parse()
-                .unwrap_or(4),
         })
     }
 

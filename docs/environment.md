@@ -116,11 +116,6 @@ JWT_SECRET=your-super-secret-key-at-least-32-bytes-long
 JWT_ACCESS_TOKEN_TTL=3600
 JWT_REFRESH_TOKEN_TTL=604800
 
-# 加密配置
-ARGON2_MEMORY=65536
-ARGON2_ITERATIONS=3
-ARGON2_PARALLELISM=4
-
 # 日志配置
 RUST_LOG=rustcloud=debug,tower_http=debug
 EOF
@@ -141,7 +136,6 @@ EOF
 | JWT_SECRET | JWT 签名密钥 | - |
 | JWT_ACCESS_TOKEN_TTL | Access Token 有效期(秒) | 3600 |
 | JWT_REFRESH_TOKEN_TTL | Refresh Token 有效期(秒) | 604800 |
-| ARGON2_MEMORY | Argon2 内存参数(KB) | 65536 |
 | RUST_LOG | 日志级别 | info |
 
 ## 四、项目初始化
