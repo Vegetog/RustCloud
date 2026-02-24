@@ -19,23 +19,6 @@ pub struct CreateUser {
     pub private_key_nonce: String,
 }
 
-/// 更新现有用户所需数据
-#[derive(Debug, Clone, Default)]
-pub struct UpdateUser {
-    pub email: Option<String>,
-    pub password_hash: Option<String>,
-}
-
-/// 更新用户加密密钥所需数据
-#[derive(Debug, Clone)]
-pub struct UserKeys {
-    pub password_hash: String,
-    pub salt: String,
-    pub public_key: String,
-    pub encrypted_private_key: String,
-    pub private_key_nonce: String,
-}
-
 // ========== 文档 DTO ==========
 
 /// 创建新文档所需数据
@@ -115,11 +98,6 @@ impl Default for DocumentListParams {
 }
 
 impl DocumentListParams {
-    /// 创建带默认值的列表参数
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// 计算分页偏移量
     pub fn offset(&self) -> u64 {
         ((self.page.saturating_sub(1)) * self.page_size) as u64

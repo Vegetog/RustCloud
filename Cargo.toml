@@ -22,8 +22,6 @@ tokio = { version = "1", features = ["full"] }
 
 # Web 框架
 axum = { version = "0.7", features = ["macros", "multipart"] }
-axum-extra = { version = "0.9", features = ["typed-header"] }
-tower = { version = "0.5", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "compression-gzip", "limit"] }
 
 # 序列化
@@ -43,11 +41,8 @@ aws-config = "1"
 
 # 密码学
 argon2 = "0.5"
-aes-gcm = "0.10"
-rsa = { version = "0.9", features = ["sha2"] }
 sha2 = "0.10"
 rand = "0.8"
-zeroize = { version = "1", features = ["derive"] }
 
 # JWT
 jsonwebtoken = "9"
@@ -55,12 +50,10 @@ jsonwebtoken = "9"
 # 工具
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-base64 = "0.22"
 hex = "0.4"
 
 # 错误处理
 thiserror = "2"
-anyhow = "1"
 
 # 日志
 tracing = "0.1"

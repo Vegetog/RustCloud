@@ -3,10 +3,10 @@
 // 密钥持久化到 sessionStorage 以支持页面刷新（浏览器关闭时清除）
 
 import { create } from 'zustand';
-import { isAxiosError } from 'axios';
 import type { User } from '../types/auth';
 import { CryptoService } from '../services/crypto';
 import { apiService } from '../services/api';
+import { getErrorMessage } from '../utils/format';
 
 interface AuthState {
   // 状态
@@ -25,17 +25,6 @@ interface AuthState {
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (isAxiosError(error)) {
-    const message = (error.response?.data as { error?: { message?: string } } | undefined)?.error?.message;
-    return message || fallback;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return fallback;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -258,10 +247,9 @@ async function initializeAuth() {
           publicKey,
         });
 
-        console.log('[Auth] Session restored from sessionStorage');
         return;
-      } catch (error) {
-        console.error('[Auth] Failed to restore session:', error);
+      } catch {
+        // 恢复失败，将在下方清除数据
       }
     }
 
@@ -277,7 +265,6 @@ async function initializeAuth() {
       refreshToken: null,
       isAuthenticated: false,
     });
-    console.log('[Auth] Session restoration failed, please re-login');
   }
 }
 

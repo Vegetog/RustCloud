@@ -11,6 +11,9 @@ use rustcloud_storage::{LocalStorage, LocalStorageConfig, MinioStorage, MinioSto
 
 use crate::error::ApiError;
 
+/// 最大文件上传大小（100MB）
+pub const MAX_FILE_SIZE: usize = 100 * 1024 * 1024;
+
 /// 所有处理器共享的应用状态
 #[derive(Clone)]
 pub struct AppState {
@@ -52,7 +55,7 @@ impl AppState {
             StorageBackend::Local => {
                 let local_config = LocalStorageConfig {
                     base_path: PathBuf::from("./data/storage"),
-                    max_file_size: 100 * 1024 * 1024, // 100MB
+                    max_file_size: MAX_FILE_SIZE as u64,
                     directory_depth: 2,
                 };
                 Arc::new(
@@ -85,13 +88,7 @@ impl AppState {
         tracing::info!("Storage backend initialized: {}", backend_name);
 
         // 4. 创建 JWT 管理器
-        let auth_config = AuthConfig {
-            jwt_secret: config.jwt_secret.clone(),
-            access_token_ttl: std::time::Duration::from_secs(config.jwt_access_token_ttl),
-            refresh_token_ttl: std::time::Duration::from_secs(config.jwt_refresh_token_ttl),
-            max_sessions_per_user: 5,
-            password_min_length: 8,
-        };
+        let auth_config = AuthConfig::from_app_config(&config);
         let jwt_manager = Arc::new(
             JwtManager::new(auth_config)
                 .map_err(|e| ApiError::internal(format!("Failed to create JWT manager: {}", e)))?,
@@ -111,13 +108,7 @@ impl AppState {
     /// 创建新的 SessionManager 实例
     /// 注意：SessionManager 需要对 Redis 的可变访问，因此每次都创建新实例
     pub fn session_manager(&self) -> SessionManager {
-        let auth_config = AuthConfig {
-            jwt_secret: self.config.jwt_secret.clone(),
-            access_token_ttl: std::time::Duration::from_secs(self.config.jwt_access_token_ttl),
-            refresh_token_ttl: std::time::Duration::from_secs(self.config.jwt_refresh_token_ttl),
-            max_sessions_per_user: 5,
-            password_min_length: 8,
-        };
+        let auth_config = AuthConfig::from_app_config(&self.config);
         SessionManager::new(self.redis.clone(), auth_config)
     }
 }

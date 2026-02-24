@@ -1,18 +1,8 @@
 # RustCloud 环境配置（当前实现）
 
-## 必需软件
+> 快速上手请参阅 [QUICKSTART.md](../QUICKSTART.md)。
 
-- Rust 1.75+
-- Node.js 18+
-- Docker + Docker Compose
-
-## 启动
-
-```bash
-docker-compose up -d
-```
-
-## 常用环境变量
+## 环境变量
 
 ```env
 SERVER_HOST=0.0.0.0
@@ -38,14 +28,6 @@ RUST_LOG=rustcloud=debug,tower_http=debug
 ```
 
 > 说明：`ARGON2_MEMORY / ARGON2_ITERATIONS / ARGON2_PARALLELISM` 已不在 `AppConfig` 中暴露为环境变量。
-
-## 验证命令
-
-```bash
-cargo check --workspace
-cargo clippy --workspace --all-targets -- -D warnings
-cd web && npm install && npm run build
-```
 
 ## 端口
 

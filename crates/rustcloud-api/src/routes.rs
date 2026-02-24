@@ -11,7 +11,7 @@ use tower_http::trace::TraceLayer;
 
 use crate::handlers;
 use crate::middleware::{auth_middleware, cors_layer};
-use crate::state::AppState;
+use crate::state::{AppState, MAX_FILE_SIZE};
 
 /// 创建并配置完整路由的应用 Router
 pub fn create_router(state: AppState) -> Router {
@@ -55,7 +55,7 @@ pub fn create_router(state: AppState) -> Router {
             "/:id/permissions/:user_id",
             delete(handlers::document::revoke_permission),
         )
-        .layer(DefaultBodyLimit::max(100 * 1024 * 1024)); // 100MB
+        .layer(DefaultBodyLimit::max(MAX_FILE_SIZE));
 
     // 受保护的分享路由
     let protected_share_routes = Router::new()
@@ -66,7 +66,7 @@ pub fn create_router(state: AppState) -> Router {
     // 受保护的存储路由
     let storage_routes = Router::new()
         .route("/upload", post(handlers::storage::upload_file))
-        .layer(DefaultBodyLimit::max(100 * 1024 * 1024)); // 100MB
+        .layer(DefaultBodyLimit::max(MAX_FILE_SIZE));
 
     // 组合受保护路由并挂载认证中间件
     let protected_routes = Router::new()

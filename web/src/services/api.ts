@@ -27,9 +27,6 @@ class ApiService {
       const token = sessionStorage.getItem('accessToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('[API] Request with token:', config.method?.toUpperCase(), config.url);
-      } else {
-        console.warn('[API] Request WITHOUT token:', config.method?.toUpperCase(), config.url);
       }
       return config;
     });
@@ -315,13 +312,6 @@ class ApiService {
   }
 
   /**
-   * 获取当前用户的所有分享链接
-   */
-  async getShares() {
-    return this.client.get<{ success: boolean; data: ShareLink[] }>('/shares');
-  }
-
-  /**
    * 访问分享链接（公开访问，无需认证）
    */
   async accessShare(token: string, password?: string) {
@@ -342,12 +332,6 @@ class ApiService {
     });
   }
 
-  /**
-   * 删除分享链接
-   */
-  async deleteShare(id: string) {
-    return this.client.delete(`/shares/${id}`);
-  }
 }
 
 // 导出单例

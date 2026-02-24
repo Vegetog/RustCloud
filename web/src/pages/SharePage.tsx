@@ -1,6 +1,7 @@
 // 分享页面：通过公开链接访问文档
 
 import { useState, useEffect, useCallback } from 'react';
+import { formatFileSize } from '../utils/format';
 import { isAxiosError } from 'axios';
 import { useParams } from 'react-router-dom';
 import {
@@ -150,12 +151,6 @@ export function SharePage() {
       setError(err instanceof Error ? err.message : '文件下载失败');
       setLoading(false);
     }
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
   return (

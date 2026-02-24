@@ -175,19 +175,6 @@ impl DocumentLockManager {
         }
     }
 
-    /// 强制释放锁（管理员/紧急情况使用）
-    pub async fn force_release(&self, doc_id: Uuid) -> LockResult<()> {
-        let key = Self::lock_key(doc_id);
-        let mut conn = self.redis.clone();
-        let _: u32 = conn.del(&key).await?;
-
-        tracing::warn!(
-            doc_id = %doc_id,
-            "Document lock force released"
-        );
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]

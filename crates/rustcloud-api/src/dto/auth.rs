@@ -45,28 +45,6 @@ pub struct RefreshRequest {
     pub refresh_token: String,
 }
 
-/// 密码修改请求
-#[derive(Debug, Deserialize, Validate)]
-pub struct ChangePasswordRequest {
-    #[validate(length(min = 1, message = "Current password is required"))]
-    pub current_password: String,
-
-    #[validate(length(min = 8, message = "New password must be at least 8 characters"))]
-    pub new_password: String,
-
-    #[validate(length(min = 1, message = "Public key is required"))]
-    pub public_key: String,
-
-    #[validate(length(min = 1, message = "Encrypted private key is required"))]
-    pub encrypted_private_key: String,
-
-    #[validate(length(min = 1, message = "Private key nonce is required"))]
-    pub private_key_nonce: String,
-
-    #[validate(length(min = 1, message = "Salt is required"))]
-    pub salt: String,
-}
-
 // ===== 响应 =====
 
 /// 用户信息响应

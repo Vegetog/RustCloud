@@ -26,6 +26,50 @@ use crate::extractors::{AuthUser, ValidatedJson};
 use crate::response::{ApiResponse, NoContent};
 use crate::state::AppState;
 
+use rustcloud_database::entities::share_link::Model as ShareLinkModel;
+
+/// 验证分享链接的过期时间、访问次数和密码
+fn validate_share_access(
+    share: &ShareLinkModel,
+    password: &Option<String>,
+) -> Result<(), ApiError> {
+    // 检查是否已过期
+    if let Some(expires_at) = share.expires_at {
+        if expires_at < Utc::now() {
+            return Err(ApiError::new(
+                StatusCode::GONE,
+                "SHARE_EXPIRED",
+                "Share link has expired",
+            ));
+        }
+    }
+
+    // 检查访问次数
+    if let Some(max_count) = share.max_access_count {
+        if share.access_count >= max_count {
+            return Err(ApiError::new(
+                StatusCode::GONE,
+                "SHARE_MAX_ACCESS",
+                "Maximum access count reached",
+            ));
+        }
+    }
+
+    // 若需要密码则进行验证
+    if let Some(ref password_hash) = share.password_hash {
+        let provided_password = password
+            .as_ref()
+            .ok_or_else(|| ApiError::unauthorized("Password required"))?;
+        let valid = check_password(provided_password, password_hash)
+            .map_err(|e| ApiError::internal(format!("Password verification failed: {}", e)))?;
+        if !valid {
+            return Err(ApiError::unauthorized("Invalid password"));
+        }
+    }
+
+    Ok(())
+}
+
 /// POST /api/v1/shares
 ///
 /// 为文档创建新的分享链接
@@ -204,37 +248,8 @@ async fn access_share_internal(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Share link"))?;
 
-    // 检查是否已过期
-    if let Some(expires_at) = share.expires_at {
-        if expires_at < Utc::now() {
-            return Err(ApiError::new(
-                axum::http::StatusCode::GONE,
-                "SHARE_EXPIRED",
-                "Share link has expired",
-            ));
-        }
-    }
-
-    // 检查访问次数
-    if let Some(max_count) = share.max_access_count {
-        if share.access_count >= max_count {
-            return Err(ApiError::new(
-                axum::http::StatusCode::GONE,
-                "SHARE_MAX_ACCESS",
-                "Maximum access count reached",
-            ));
-        }
-    }
-
-    // 若需要密码则进行验证
-    if let Some(ref password_hash) = share.password_hash {
-        let provided_password = password.ok_or_else(|| ApiError::unauthorized("Password required"))?;
-        let valid = check_password(&provided_password, password_hash)
-            .map_err(|e| ApiError::internal(format!("Password verification failed: {}", e)))?;
-        if !valid {
-            return Err(ApiError::unauthorized("Invalid password"));
-        }
-    }
+    // 验证过期时间、访问次数和密码
+    validate_share_access(&share, &password)?;
 
     // 增加访问次数
     share_repo
@@ -284,32 +299,8 @@ pub async fn download_shared_document(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Share link"))?;
 
-    // 若需要密码则进行验证
-    if let Some(password_hash) = &share.password_hash {
-        let provided_password = query
-            .password
-            .ok_or_else(|| ApiError::unauthorized("Password required"))?;
-
-        if !check_password(&provided_password, password_hash)
-            .map_err(|e| ApiError::internal(format!("Password verification failed: {}", e)))?
-        {
-            return Err(ApiError::unauthorized("Invalid password"));
-        }
-    }
-
-    // 检查是否已过期
-    if let Some(expires_at) = share.expires_at {
-        if Utc::now() > expires_at {
-            return Err(ApiError::forbidden("Share link has expired"));
-        }
-    }
-
-    // 检查访问次数限制
-    if let Some(max_count) = share.max_access_count {
-        if share.access_count >= max_count {
-            return Err(ApiError::forbidden("Access limit reached"));
-        }
-    }
+    // 验证过期时间、访问次数和密码
+    validate_share_access(&share, &query.password)?;
 
     // 获取文档
     let doc = doc_repo

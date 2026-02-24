@@ -7,6 +7,7 @@ import type { Document } from '../types/document';
 import { apiService } from '../services/api';
 import { CryptoService } from '../services/crypto';
 import { useAuthStore } from './authStore';
+import { getErrorMessage } from '../utils/format';
 
 interface DocumentState {
   // 状态
@@ -24,22 +25,6 @@ interface DocumentState {
   downloadDocument: (id: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   clearError: () => void;
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (isAxiosError(error)) {
-    const data = error.response?.data as
-      | { error?: { message?: string }; message?: string }
-      | ArrayBuffer
-      | undefined;
-    if (data && !(data instanceof ArrayBuffer)) {
-      return data.error?.message || data.message || fallback;
-    }
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return fallback;
 }
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({

@@ -23,9 +23,6 @@ pub trait ShareLinkRepositoryTrait: Send + Sync {
     /// 根据 ID 查询分享链接
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<ShareLinkModel>>;
 
-    /// 查询文档的全部分享链接
-    async fn find_by_document(&self, doc_id: Uuid) -> DbResult<Vec<ShareLinkModel>>;
-
     /// 查询用户创建的全部分享链接
     async fn find_by_creator(&self, creator_id: Uuid) -> DbResult<Vec<ShareLinkModel>>;
 
@@ -34,9 +31,6 @@ pub trait ShareLinkRepositoryTrait: Send + Sync {
 
     /// 根据 ID 删除分享链接
     async fn delete(&self, id: Uuid) -> DbResult<()>;
-
-    /// 删除所有过期分享链接
-    async fn delete_expired(&self) -> DbResult<u64>;
 }
 
 /// 分享链接仓储实现
@@ -86,14 +80,6 @@ impl ShareLinkRepositoryTrait for ShareLinkRepository {
         Ok(result)
     }
 
-    async fn find_by_document(&self, doc_id: Uuid) -> DbResult<Vec<ShareLinkModel>> {
-        let result = ShareLink::find()
-            .filter(share_link::Column::DocumentId.eq(doc_id))
-            .all(&*self.db)
-            .await?;
-        Ok(result)
-    }
-
     async fn find_by_creator(&self, creator_id: Uuid) -> DbResult<Vec<ShareLinkModel>> {
         let result = ShareLink::find()
             .filter(share_link::Column::CreatorId.eq(creator_id))
@@ -122,15 +108,6 @@ impl ShareLinkRepositoryTrait for ShareLinkRepository {
         Ok(())
     }
 
-    async fn delete_expired(&self) -> DbResult<u64> {
-        let now = Utc::now();
-        let result = ShareLink::delete_many()
-            .filter(share_link::Column::ExpiresAt.is_not_null())
-            .filter(share_link::Column::ExpiresAt.lt(now))
-            .exec(&*self.db)
-            .await?;
-        Ok(result.rows_affected)
-    }
 }
 
 #[cfg(test)]
@@ -181,32 +158,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_by_document() {
-        let link1 = mock_share_link();
-        let link2 = ShareLinkModel {
-            id: Uuid::new_v4(),
-            document_id: link1.document_id,
-            creator_id: link1.creator_id,
-            access_token: "token456".to_string(),
-            encrypted_key: "enckey2".to_string(),
-            password_hash: Some("hash".to_string()),
-            expires_at: Some(Utc::now()),
-            max_access_count: None,
-            access_count: 5,
-            created_at: Utc::now(),
-        };
-
-        let db = MockDatabase::new(DatabaseBackend::Postgres)
-            .append_query_results([vec![link1.clone(), link2]])
-            .into_connection();
-
-        let repo = ShareLinkRepository::new(Arc::new(db));
-        let result = repo.find_by_document(link1.document_id).await.unwrap();
-
-        assert_eq!(result.len(), 2);
-    }
-
-    #[tokio::test]
     async fn test_delete_share_link() {
         let db = MockDatabase::new(DatabaseBackend::Postgres)
             .append_exec_results([MockExecResult {
@@ -221,18 +172,4 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
-    async fn test_delete_expired() {
-        let db = MockDatabase::new(DatabaseBackend::Postgres)
-            .append_exec_results([MockExecResult {
-                last_insert_id: 0,
-                rows_affected: 5,
-            }])
-            .into_connection();
-
-        let repo = ShareLinkRepository::new(Arc::new(db));
-        let result = repo.delete_expired().await.unwrap();
-
-        assert_eq!(result, 5);
-    }
 }

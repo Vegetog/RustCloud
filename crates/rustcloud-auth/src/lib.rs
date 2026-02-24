@@ -52,9 +52,6 @@ pub use types::{AuthenticatedUser, Session, TokenPair};
 pub use password::{check_password, create_password_hash, validate_password_strength};
 pub use types::{PasswordError, PasswordValidation};
 
-// 从 rustcloud-crypto 重新导出以便使用
-pub use rustcloud_crypto::{hash_password, verify_password};
-
 #[cfg(test)]
 mod tests {
     use super::*;

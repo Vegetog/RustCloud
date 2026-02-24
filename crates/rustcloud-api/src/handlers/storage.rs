@@ -65,8 +65,8 @@ pub async fn upload_file(
 
             tracing::info!("Read {} bytes from file field", data.len());
 
-            // 检查文件大小限制（100MB）
-            if data.len() > 100 * 1024 * 1024 {
+            // 检查文件大小限制
+            if data.len() > crate::state::MAX_FILE_SIZE {
                 tracing::warn!("File too large: {} bytes", data.len());
                 return Err(ApiError::bad_request("File too large (max 100MB)"));
             }

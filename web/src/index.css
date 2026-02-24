@@ -49,10 +49,6 @@ a {
   animation: fadeIn 0.4s ease-out;
 }
 
-.slide-up {
-  animation: slideUp 0.4s ease-out;
-}
-
 .zoom-in-95 {
   animation: zoomIn95 0.2s ease-out;
 }
@@ -63,17 +59,6 @@ a {
   }
   to {
     opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 

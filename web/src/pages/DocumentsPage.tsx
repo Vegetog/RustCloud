@@ -1,6 +1,7 @@
 // 文档管理主页面
 
 import { useEffect, useRef, useState } from 'react';
+import { formatFileSize } from '../utils/format';
 import { isAxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,13 +9,11 @@ import {
   Home,
   Folder,
   Lock,
-  Users,
   Trash2,
   Search,
   Plus,
   Download,
   Share2,
-  MoreVertical,
   FileText,
   Image as ImageIcon,
   File,
@@ -58,8 +57,6 @@ export function DocumentsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
-
   // 分享弹窗状态
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareDocumentId, setShareDocumentId] = useState<string | null>(null);
@@ -223,14 +220,6 @@ export function DocumentsPage() {
     }
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    if (bytes < 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  };
-
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('zh-CN', {
@@ -285,29 +274,12 @@ export function DocumentsPage() {
 
         {/* 导航 */}
         <nav className="flex-1 px-4 space-y-1 mt-4">
-          {[
-            { id: 'all', icon: Home, label: '全部文件' },
-            { id: 'encrypted', icon: Lock, label: '加密保险箱' },
-            { id: 'shared', icon: Users, label: '共享协作' },
-            { id: 'trash', icon: Trash2, label: '回收站' },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
-                activeTab === item.id
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
-                  : 'hover:bg-slate-800'
-              }`}
-            >
-              <item.icon
-                className={`w-5 h-5 ${
-                  activeTab === item.id ? 'text-white' : 'text-slate-400'
-                }`}
-              />
-              <span className="font-medium text-sm">{item.label}</span>
-            </button>
-          ))}
+          <button
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all bg-blue-600 text-white shadow-md shadow-blue-900/20"
+          >
+            <Home className="w-5 h-5 text-white" />
+            <span className="font-medium text-sm">全部文件</span>
+          </button>
         </nav>
 
         {/* 用户信息和登出 */}
@@ -338,7 +310,7 @@ export function DocumentsPage() {
         {/* 顶部栏 */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
           <div className="flex items-center text-sm font-medium text-slate-500">
-            <span className="text-slate-800 capitalize">{activeTab}</span>
+            <span className="text-slate-800">全部文件</span>
             <span className="ml-2 text-slate-400">·</span>
             <span className="ml-2">{total} 个文档</span>
           </div>
@@ -467,12 +439,7 @@ export function DocumentsPage() {
                         <div className={`p-2 rounded-lg ${colorClass}`}>
                           <FileIcon className="w-6 h-6" />
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <Lock className="w-3.5 h-3.5 text-emerald-500" />
-                          <button className="p-1 hover:bg-slate-100 rounded text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <Lock className="w-3.5 h-3.5 text-emerald-500" />
                       </div>
 
                       {/* 文件名 */}

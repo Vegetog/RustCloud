@@ -42,13 +42,10 @@ export function PreviewModal({
         setLoading(true);
         setError(null);
 
-        console.log('[Preview] Downloading encrypted file...');
         // 1. 下载加密文件
         const response = await apiService.downloadDocument(documentId);
-        console.log('[Preview] Downloaded:', response.data.byteLength, 'bytes');
 
         // 2. 客户端解密
-        console.log('[Preview] Decrypting...');
         const { content } = await cryptoService.decryptDocument(
           response.data,
           encryptedName,
@@ -57,14 +54,12 @@ export function PreviewModal({
           encryptedKey,
           privateKey!  // Non-null assertion: already checked above
         );
-        console.log('[Preview] Decrypted:', content.byteLength, 'bytes');
 
         // 3. 根据类型处理
         if (mimeType.startsWith('text/')) {
           // 文本文件：直接解码为字符串
           const text = new TextDecoder('utf-8').decode(content);
           setTextContent(text);
-          console.log('[Preview] Loaded text content');
         } else {
           // 二进制文件：创建 Blob URL（完全离线）
           const blob = new Blob([content], { type: mimeType });
@@ -74,7 +69,6 @@ export function PreviewModal({
           }
           previewUrlRef.current = url;
           setPreviewUrl(url);
-          console.log('[Preview] Created Blob URL:', url);
         }
 
         setLoading(false);
@@ -98,7 +92,6 @@ export function PreviewModal({
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
         previewUrlRef.current = null;
-        console.log('[Preview] Revoked Blob URL');
       }
     };
   }, [documentId, contentNonce, nameNonce, encryptedName, encryptedKey, mimeType, privateKey]);

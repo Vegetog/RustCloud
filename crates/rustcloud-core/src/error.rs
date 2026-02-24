@@ -84,22 +84,3 @@ pub enum Error {
     Internal(String),
 }
 
-impl Error {
-    pub fn status_code(&self) -> u16 {
-        match self {
-            Error::InvalidCredentials | Error::InvalidPassword(_) | Error::InvalidSharePassword => {
-                400
-            }
-            Error::TokenExpired | Error::InvalidToken | Error::Unauthorized => 401,
-            Error::DocumentAccessDenied => 403,
-            Error::UserNotFound
-            | Error::DocumentNotFound
-            | Error::ShareLinkNotFound
-            | Error::FileNotFound => 404,
-            Error::UserAlreadyExists => 409,
-            Error::ShareLinkExpired => 410,
-            Error::RateLimitExceeded => 429,
-            _ => 500,
-        }
-    }
-}

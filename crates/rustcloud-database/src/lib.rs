@@ -7,7 +7,6 @@
 //! - 用户、文档、文档密钥和分享链接的 SeaORM 实体定义
 //! - 用于数据访问抽象的仓储模式
 //! - 数据库连接池管理
-//! - 核心类型与 ORM 实体之间的类型转换
 //!
 //! # 使用示例
 //!
@@ -27,7 +26,6 @@
 //! ```
 
 pub mod connection;
-mod conversions;
 pub mod entities;
 pub mod error;
 pub mod pagination;
@@ -55,7 +53,7 @@ pub use repositories::{
 // 重新导出类型
 pub use types::{
     CreateDocument, CreateDocumentKey, CreateShareLink, CreateUser, DocumentListParams, SortField,
-    SortOrder, UpdateDocument, UpdateUser, UserKeys,
+    SortOrder, UpdateDocument,
 };
 
 // 重新导出 sea_orm 供下游使用

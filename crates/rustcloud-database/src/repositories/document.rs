@@ -27,13 +27,6 @@ pub trait DocumentRepositoryTrait: Send + Sync {
     /// 根据 ID 查找文档
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<DocumentModel>>;
 
-    /// 根据所有者分页查询文档
-    async fn find_by_owner(
-        &self,
-        owner_id: Uuid,
-        params: DocumentListParams,
-    ) -> DbResult<Page<DocumentModel>>;
-
     /// 查找用户可访问的文档（自有 + 共享）
     async fn find_accessible(
         &self,
@@ -110,28 +103,6 @@ impl DocumentRepositoryTrait for DocumentRepository {
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<DocumentModel>> {
         let result = Document::find_by_id(id).one(&*self.db).await?;
         Ok(result)
-    }
-
-    async fn find_by_owner(
-        &self,
-        owner_id: Uuid,
-        params: DocumentListParams,
-    ) -> DbResult<Page<DocumentModel>> {
-        let query = Document::find().filter(document::Column::OwnerId.eq(owner_id));
-
-        let query = Self::apply_sort(query, &params.sort_by, &params.sort_order);
-
-        // 获取总数
-        let total = query.clone().count(&*self.db).await?;
-
-        // 应用分页
-        let items = query
-            .offset(params.offset())
-            .limit(params.limit())
-            .all(&*self.db)
-            .await?;
-
-        Ok(Page::new(items, total, params.page, params.page_size))
     }
 
     async fn find_accessible(

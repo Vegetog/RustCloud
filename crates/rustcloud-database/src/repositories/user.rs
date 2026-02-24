@@ -8,8 +8,8 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Qu
 use uuid::Uuid;
 
 use crate::entities::user::{self, Entity as User, Model as UserModel};
-use crate::error::{DatabaseError, DbResult};
-use crate::types::{CreateUser, UpdateUser, UserKeys};
+use crate::error::DbResult;
+use crate::types::CreateUser;
 
 /// 用于依赖注入的用户仓储特征
 #[async_trait]
@@ -23,14 +23,6 @@ pub trait UserRepositoryTrait: Send + Sync {
     /// 根据邮箱查找用户
     async fn find_by_email(&self, email: &str) -> DbResult<Option<UserModel>>;
 
-    /// 更新用户字段
-    async fn update(&self, id: Uuid, data: UpdateUser) -> DbResult<UserModel>;
-
-    /// 根据 ID 删除用户
-    async fn delete(&self, id: Uuid) -> DbResult<()>;
-
-    /// 更新用户加密密钥
-    async fn update_keys(&self, id: Uuid, keys: UserKeys) -> DbResult<()>;
 }
 
 /// 用户仓储实现
@@ -80,57 +72,12 @@ impl UserRepositoryTrait for UserRepository {
         Ok(result)
     }
 
-    async fn update(&self, id: Uuid, data: UpdateUser) -> DbResult<UserModel> {
-        let user = User::find_by_id(id)
-            .one(&*self.db)
-            .await?
-            .ok_or(DatabaseError::NotFound)?;
-
-        let mut model: user::ActiveModel = user.into();
-
-        if let Some(email) = data.email {
-            model.email = Set(email);
-        }
-        if let Some(password_hash) = data.password_hash {
-            model.password_hash = Set(password_hash);
-        }
-        model.updated_at = Set(Utc::now());
-
-        let result = model.update(&*self.db).await?;
-        Ok(result)
-    }
-
-    async fn delete(&self, id: Uuid) -> DbResult<()> {
-        let result = User::delete_by_id(id).exec(&*self.db).await?;
-        if result.rows_affected == 0 {
-            return Err(DatabaseError::NotFound);
-        }
-        Ok(())
-    }
-
-    async fn update_keys(&self, id: Uuid, keys: UserKeys) -> DbResult<()> {
-        let user = User::find_by_id(id)
-            .one(&*self.db)
-            .await?
-            .ok_or(DatabaseError::NotFound)?;
-
-        let mut model: user::ActiveModel = user.into();
-        model.password_hash = Set(keys.password_hash);
-        model.salt = Set(keys.salt);
-        model.public_key = Set(keys.public_key);
-        model.encrypted_private_key = Set(keys.encrypted_private_key);
-        model.private_key_nonce = Set(keys.private_key_nonce);
-        model.updated_at = Set(Utc::now());
-
-        model.update(&*self.db).await?;
-        Ok(())
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sea_orm::{DatabaseBackend, MockDatabase, MockExecResult};
+    use sea_orm::{DatabaseBackend, MockDatabase};
 
     fn mock_user() -> UserModel {
         UserModel {
@@ -189,33 +136,4 @@ mod tests {
         assert_eq!(result.unwrap().id, user_id);
     }
 
-    #[tokio::test]
-    async fn test_delete_user() {
-        let db = MockDatabase::new(DatabaseBackend::Postgres)
-            .append_exec_results([MockExecResult {
-                last_insert_id: 0,
-                rows_affected: 1,
-            }])
-            .into_connection();
-
-        let repo = UserRepository::new(Arc::new(db));
-        let result = repo.delete(Uuid::new_v4()).await;
-
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_delete_user_not_found() {
-        let db = MockDatabase::new(DatabaseBackend::Postgres)
-            .append_exec_results([MockExecResult {
-                last_insert_id: 0,
-                rows_affected: 0,
-            }])
-            .into_connection();
-
-        let repo = UserRepository::new(Arc::new(db));
-        let result = repo.delete(Uuid::new_v4()).await;
-
-        assert!(matches!(result, Err(DatabaseError::NotFound)));
-    }
 }

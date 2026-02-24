@@ -7,9 +7,7 @@ use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use uuid::Uuid;
 
-use crate::entities::document_key::{
-    self, Entity as DocumentKey, Model as DocumentKeyModel, PermissionLevel,
-};
+use crate::entities::document_key::{self, Entity as DocumentKey, Model as DocumentKeyModel};
 use crate::error::{DatabaseError, DbResult};
 use crate::types::CreateDocumentKey;
 
@@ -29,17 +27,8 @@ pub trait DocumentKeyRepositoryTrait: Send + Sync {
     /// 查询文档的全部密钥
     async fn find_by_document(&self, doc_id: Uuid) -> DbResult<Vec<DocumentKeyModel>>;
 
-    /// 查询用户的全部密钥
-    async fn find_by_user(&self, user_id: Uuid) -> DbResult<Vec<DocumentKeyModel>>;
-
-    /// 更新权限级别
-    async fn update_permission(&self, id: Uuid, level: PermissionLevel) -> DbResult<()>;
-
     /// 根据 ID 删除密钥
     async fn delete(&self, id: Uuid) -> DbResult<()>;
-
-    /// 删除文档的全部密钥
-    async fn delete_by_document(&self, doc_id: Uuid) -> DbResult<u64>;
 }
 
 /// 文档密钥仓储实现
@@ -93,26 +82,6 @@ impl DocumentKeyRepositoryTrait for DocumentKeyRepository {
         Ok(result)
     }
 
-    async fn find_by_user(&self, user_id: Uuid) -> DbResult<Vec<DocumentKeyModel>> {
-        let result = DocumentKey::find()
-            .filter(document_key::Column::UserId.eq(user_id))
-            .all(&*self.db)
-            .await?;
-        Ok(result)
-    }
-
-    async fn update_permission(&self, id: Uuid, level: PermissionLevel) -> DbResult<()> {
-        let key = DocumentKey::find_by_id(id)
-            .one(&*self.db)
-            .await?
-            .ok_or(DatabaseError::NotFound)?;
-
-        let mut model: document_key::ActiveModel = key.into();
-        model.permission_level = Set(level);
-        model.update(&*self.db).await?;
-        Ok(())
-    }
-
     async fn delete(&self, id: Uuid) -> DbResult<()> {
         let result = DocumentKey::delete_by_id(id).exec(&*self.db).await?;
         if result.rows_affected == 0 {
@@ -120,19 +89,12 @@ impl DocumentKeyRepositoryTrait for DocumentKeyRepository {
         }
         Ok(())
     }
-
-    async fn delete_by_document(&self, doc_id: Uuid) -> DbResult<u64> {
-        let result = DocumentKey::delete_many()
-            .filter(document_key::Column::DocumentId.eq(doc_id))
-            .exec(&*self.db)
-            .await?;
-        Ok(result.rows_affected)
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::document_key::PermissionLevel;
     use sea_orm::{DatabaseBackend, MockDatabase, MockExecResult};
 
     fn mock_document_key() -> DocumentKeyModel {
@@ -202,18 +164,4 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
-    async fn test_delete_by_document() {
-        let db = MockDatabase::new(DatabaseBackend::Postgres)
-            .append_exec_results([MockExecResult {
-                last_insert_id: 0,
-                rows_affected: 3,
-            }])
-            .into_connection();
-
-        let repo = DocumentKeyRepository::new(Arc::new(db));
-        let result = repo.delete_by_document(Uuid::new_v4()).await.unwrap();
-
-        assert_eq!(result, 3);
-    }
 }
