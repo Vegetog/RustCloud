@@ -85,7 +85,6 @@ impl DocumentRepositoryTrait for DocumentRepository {
             encrypted_name: Set(data.encrypted_name),
             name_nonce: Set(data.name_nonce),
             content_nonce: Set(data.content_nonce),
-            content_hash: Set(data.content_hash),
             storage_path: Set(data.storage_path),
             size: Set(data.size),
             mime_type: Set(data.mime_type),
@@ -145,9 +144,6 @@ impl DocumentRepositoryTrait for DocumentRepository {
         if let Some(content_nonce) = data.content_nonce {
             model.content_nonce = Set(content_nonce);
         }
-        if let Some(content_hash) = data.content_hash {
-            model.content_hash = Set(content_hash);
-        }
         if let Some(storage_path) = data.storage_path {
             model.storage_path = Set(storage_path);
         }
@@ -190,7 +186,6 @@ mod tests {
             encrypted_name: "encname".to_string(),
             name_nonce: "nonce".to_string(),
             content_nonce: "content_nonce".to_string(),
-            content_hash: "hash".to_string(),
             storage_path: "/path/to/file".to_string(),
             size: 1024,
             mime_type: "application/pdf".to_string(),

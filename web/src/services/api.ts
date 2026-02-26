@@ -189,7 +189,6 @@ class ApiService {
       encrypted_name?: string;
       name_nonce?: string;
       content_nonce?: string;
-      content_hash?: string;
       storage_path?: string;
       size?: number;
       expected_version?: number;
@@ -205,7 +204,6 @@ class ApiService {
         content_nonce: string;
         mime_type: string;
         size: number;
-        content_hash: string;
         storage_path: string;
         owner_id: string;
         created_at: string;
@@ -323,7 +321,6 @@ class ApiService {
         encrypted_name: string;
         name_nonce: string;
         content_nonce: string;
-        content_hash: string;
         size: number;
         mime_type: string;
       };

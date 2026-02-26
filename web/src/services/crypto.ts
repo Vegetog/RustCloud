@@ -167,20 +167,14 @@ export class CryptoService {
       nameBytes
     );
 
-    // 6. 计算内容哈希（加密内容的 SHA-256）
-    const hashBuffer = await crypto.subtle.digest('SHA-256', encryptedContent);
-    const contentHash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-
-    // 7. 使用公钥加密文档密钥
+    // 6. 使用公钥加密文档密钥
     const encryptedKey = await crypto.subtle.encrypt(
       { name: 'RSA-OAEP' },
       publicKey,
       documentKey
     );
 
-    // 8. 清除内存中的文档密钥
+    // 7. 清除内存中的文档密钥
     documentKey.fill(0);
 
     return {
@@ -188,7 +182,6 @@ export class CryptoService {
       encryptedName: this.arrayBufferToBase64(encryptedName),
       nameNonce: this.arrayBufferToBase64(nameNonce.buffer),
       contentNonce: this.arrayBufferToBase64(contentNonce.buffer),
-      contentHash,
       encryptedKey: this.arrayBufferToBase64(encryptedKey),
     };
   }

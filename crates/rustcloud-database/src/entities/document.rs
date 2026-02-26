@@ -19,9 +19,6 @@ pub struct Model {
     /// 用于内容加密的 Base64 编码 nonce
     pub content_nonce: String,
 
-    /// 加密内容的 SHA-256 哈希（十六进制）
-    pub content_hash: String,
-
     /// 对象存储中的存储路径
     pub storage_path: String,
 

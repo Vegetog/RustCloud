@@ -115,7 +115,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         name_nonce: encrypted.nameNonce,
         content_nonce: encrypted.contentNonce,
         encrypted_key: encrypted.encryptedKey,
-        content_hash: encrypted.contentHash,
         mime_type: file.type || 'application/octet-stream',
       });
 

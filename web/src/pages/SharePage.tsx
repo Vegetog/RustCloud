@@ -23,7 +23,6 @@ interface ShareAccessData {
   encrypted_name: string;
   name_nonce: string;
   content_nonce: string;
-  content_hash: string;
   size: number;
   mime_type: string;
 }

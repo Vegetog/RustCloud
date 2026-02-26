@@ -76,7 +76,6 @@ pub async fn list_documents(
             content_nonce: doc.content_nonce,
             size: doc.size,
             mime_type: doc.mime_type,
-            content_hash: doc.content_hash,
             permission_level,
             version: doc.version,
             encrypted_key,
@@ -146,7 +145,6 @@ pub async fn upload_document(
 
     let file_content = file_content.ok_or_else(|| ApiError::bad_request("Missing file"))?;
     let metadata = metadata.ok_or_else(|| ApiError::bad_request("Missing metadata"))?;
-
     // 生成存储路径
     let doc_id = Uuid::new_v4();
     let storage_path = format!("documents/{}/{}", user.id, doc_id);
@@ -170,7 +168,6 @@ pub async fn upload_document(
             encrypted_name: metadata.encrypted_name,
             name_nonce: metadata.name_nonce,
             content_nonce: metadata.content_nonce,
-            content_hash: metadata.content_hash,
             storage_path: storage_path.clone(),
             size: file_content.len() as i64,
             mime_type: mime_type.clone(),
@@ -207,7 +204,6 @@ pub async fn upload_document(
         content_nonce: doc.content_nonce,
         size: doc.size,
         mime_type: doc.mime_type,
-        content_hash: doc.content_hash,
         permission_level: "owner".to_string(),
         version: doc.version,
         encrypted_key: None,
@@ -251,7 +247,6 @@ pub async fn get_document(
             content_nonce: doc.content_nonce,
             size: doc.size,
             mime_type: doc.mime_type,
-            content_hash: doc.content_hash,
             permission_level: permission_to_string(key.permission_level),
             version: doc.version,
             encrypted_key: None,
@@ -424,7 +419,6 @@ pub async fn update_document(
         encrypted_name: req.encrypted_name,
         name_nonce: req.name_nonce,
         content_nonce: req.content_nonce,
-        content_hash: req.content_hash,
         storage_path: req.storage_path,
         size: req.size,
         version: Some(current_doc.version + 1),
@@ -452,7 +446,6 @@ pub async fn update_document(
         content_nonce: updated_doc.content_nonce,
         mime_type: updated_doc.mime_type,
         size: updated_doc.size,
-        content_hash: updated_doc.content_hash,
         permission_level: permission_to_string(my_key.permission_level),
         version: updated_doc.version,
         encrypted_key: None,

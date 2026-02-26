@@ -19,9 +19,6 @@ pub struct UploadMetadata {
     #[validate(length(min = 1, message = "Content nonce is required"))]
     pub content_nonce: String,
 
-    #[validate(length(min = 1, message = "Content hash is required"))]
-    pub content_hash: String,
-
     #[validate(length(min = 1, message = "Encrypted key is required"))]
     pub encrypted_key: String,
 
@@ -62,7 +59,6 @@ pub struct DocumentResponse {
     pub content_nonce: String,
     pub size: i64,
     pub mime_type: String,
-    pub content_hash: String,
     pub permission_level: String,
     pub version: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -113,7 +109,6 @@ pub struct UpdateDocumentRequest {
     #[validate(length(min = 1, max = 200))]
     pub content_nonce: Option<String>,
 
-    pub content_hash: Option<String>,
     pub storage_path: Option<String>,
     pub size: Option<i64>,
 

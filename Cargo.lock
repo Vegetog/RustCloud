@@ -3065,7 +3065,6 @@ dependencies = [
  "redis",
  "rustcloud-auth",
  "rustcloud-core",
- "rustcloud-crypto",
  "rustcloud-database",
  "rustcloud-storage",
  "serde",

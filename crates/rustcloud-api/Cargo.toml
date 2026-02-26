@@ -12,7 +12,6 @@ path = "src/main.rs"
 
 [dependencies]
 rustcloud-core = { workspace = true }
-rustcloud-crypto = { workspace = true }
 rustcloud-storage = { workspace = true }
 rustcloud-auth = { workspace = true }
 rustcloud-database = { workspace = true }

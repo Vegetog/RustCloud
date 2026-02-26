@@ -267,24 +267,16 @@ export function DocumentEditorModal({
       const uploadResponse = await apiService.uploadFile(blob, 'encrypted');
       const newStoragePath = uploadResponse.data.data.storage_path;
 
-      // 6. 计算新的 内容哈希
-      const hashBuffer = await window.crypto.subtle.digest(
-        'SHA-256',
-        encryptedContent
-      );
-      const contentHash = crypto.arrayBufferToBase64(hashBuffer);
-
-      // 7. 更新文档元数据（包含锁和版本信息）
+      // 6. 更新文档元数据（包含锁和版本信息）
       await apiService.updateDocument(documentId, {
         content_nonce: crypto.arrayBufferToBase64(newContentNonce.buffer as ArrayBuffer),
-        content_hash: contentHash,
         storage_path: newStoragePath,
         size: blob.size,
         expected_version: version,
         lock_id: lockId,
       });
 
-      // 8. 成功
+      // 7. 成功
       onSuccess();
       onClose();
     } catch (err) {

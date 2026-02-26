@@ -15,7 +15,6 @@ export interface EncryptedDocument {
   encryptedName: string; // base64
   nameNonce: string; // base64
   contentNonce: string; // base64
-  contentHash: string; // hex
   encryptedKey: string; // base64 (RSA encrypted)
 }
 
