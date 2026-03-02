@@ -314,11 +314,18 @@ impl SessionManager {
 
         // 若达到或超过上限，则删除最旧的会话
         if session_ids.len() >= self.config.max_sessions_per_user as usize {
-            // 获取所有会话及其创建时间
+            // 获取所有会话及其创建时间，清理已过期的会话 ID
             let mut sessions: Vec<Session> = Vec::new();
             for session_id in &session_ids {
                 if let Some(session) = self.get_session(session_id).await? {
                     sessions.push(session);
+                } else {
+                    // 会话已过期，从用户会话集合中移除残留 ID
+                    let _: () = self
+                        .redis
+                        .srem(&user_sessions_key, session_id)
+                        .await
+                        .unwrap_or_default();
                 }
             }
 
@@ -326,7 +333,8 @@ impl SessionManager {
             sessions.sort_by(|a, b| a.created_at.cmp(&b.created_at));
 
             // 删除最旧的会话以腾出空间
-            let to_remove = sessions.len() - (self.config.max_sessions_per_user as usize - 1);
+            let max_keep = (self.config.max_sessions_per_user as usize).saturating_sub(1);
+            let to_remove = sessions.len().saturating_sub(max_keep);
             for session in sessions.iter().take(to_remove) {
                 self.destroy_session(&session.id).await?;
             }
