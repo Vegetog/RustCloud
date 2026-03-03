@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { SharePage } from './pages/SharePage';
+import { CryptoVisualPage } from './pages/CryptoVisualPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           }
         />
         <Route path="/share/:token" element={<SharePage />} />
+        <Route path="/crypto-visual" element={<CryptoVisualPage />} />
       </Routes>
     </BrowserRouter>
   );
