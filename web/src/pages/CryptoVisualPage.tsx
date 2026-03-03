@@ -195,12 +195,7 @@ export function CryptoVisualPage() {
 
   // 中间密钥存储（用于步骤间传递）
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
-  const [, setSalt] = useState<Uint8Array | null>(null);
   const [keyPair, setKeyPair] = useState<{ publicKey: CryptoKey; privateKey: CryptoKey } | null>(null);
-  const [, setEncryptedPrivateKeyData] = useState<{
-    ciphertext: ArrayBuffer;
-    nonce: Uint8Array;
-  } | null>(null);
   const [encResult, setEncResult] = useState<{
     encryptedContent: ArrayBuffer;
     encryptedKey: string;
@@ -215,7 +210,6 @@ export function CryptoVisualPage() {
     const start = performance.now();
 
     const newSalt = crypto.getRandomValues(new Uint8Array(32));
-    setSalt(newSalt);
 
     const key = await cryptoService.deriveMasterKey(demoPassword, newSalt);
     setMasterKey(key);
@@ -277,7 +271,6 @@ export function CryptoVisualPage() {
     const start = performance.now();
 
     const encrypted = await cryptoService.encryptPrivateKey(keyPair.privateKey, masterKey);
-    setEncryptedPrivateKeyData(encrypted);
     const elapsed = Math.round(performance.now() - start);
 
     setStep3({
@@ -372,9 +365,7 @@ export function CryptoVisualPage() {
     setStep4({ status: 'idle', data: {} });
     setStep5({ status: 'idle', data: {} });
     setMasterKey(null);
-    setSalt(null);
     setKeyPair(null);
-    setEncryptedPrivateKeyData(null);
     setEncResult(null);
   };
 
@@ -386,7 +377,6 @@ export function CryptoVisualPage() {
     setStep1({ status: 'running', data: {} });
     const start1 = performance.now();
     const newSalt = crypto.getRandomValues(new Uint8Array(32));
-    setSalt(newSalt);
     const key = await cryptoService.deriveMasterKey(demoPassword, newSalt);
     setMasterKey(key);
     const exportedKey = await crypto.subtle.exportKey('raw', key);
@@ -434,7 +424,6 @@ export function CryptoVisualPage() {
     setStep3({ status: 'running', data: {} });
     const start3 = performance.now();
     const encrypted = await cryptoService.encryptPrivateKey(kp.privateKey, key);
-    setEncryptedPrivateKeyData(encrypted);
     setStep3({
       status: 'done',
       duration: Math.round(performance.now() - start3),
@@ -505,7 +494,7 @@ export function CryptoVisualPage() {
     });
   };
 
-  const allDone = step1.status === 'done' && step2.status === 'done' && step3.status === 'done' && step4.status === 'done' && step5.status === 'done';
+  const allDone = [step1, step2, step3, step4, step5].every(step => step.status === 'done');
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">

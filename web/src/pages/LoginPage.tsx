@@ -161,6 +161,7 @@ export function LoginPage() {
               <Link
                 to="/crypto-visual"
                 className="text-indigo-600 hover:text-indigo-700 text-sm font-medium transition-colors"
+                aria-label="查看加密体系可视化演示"
               >
                 🔐 查看加密体系可视化演示
               </Link>
