@@ -150,13 +150,22 @@ export function LoginPage() {
           </form>
 
           {/* 注册链接 */}
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <Link
               to="/register"
               className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
             >
               还没有账号？点击注册
             </Link>
+            <div>
+              <Link
+                to="/crypto-visual"
+                className="text-indigo-600 hover:text-indigo-700 text-sm font-medium transition-colors"
+                aria-label="查看加密体系可视化演示"
+              >
+                🔐 查看加密体系可视化演示
+              </Link>
+            </div>
           </div>
 
           {/* 安全提示 */}
