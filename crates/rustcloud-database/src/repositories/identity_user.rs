@@ -83,26 +83,12 @@ impl IdentityUserRepositoryTrait for IdentityUserRepository {
         if items.is_empty() {
             return Ok(vec![]);
         }
-        let now = Utc::now();
-        let models: Vec<identity_user::ActiveModel> = items
-            .iter()
-            .map(|item| identity_user::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                identity_id: Set(item.identity_id),
-                user_id: Set(item.user_id),
-                assigned_at: Set(now),
-            })
-            .collect();
-
-        let result = IdentityUser::insert_many(models).exec(&*self.db).await?;
-        // After bulk insert, query back the inserted records
-        let _ = result;
-        let inserted = IdentityUser::find()
-            .filter(identity_user::Column::IdentityId.eq(items[0].identity_id))
-            .filter(identity_user::Column::AssignedAt.eq(now))
-            .all(&*self.db)
-            .await?;
-        Ok(inserted)
+        let mut results = Vec::with_capacity(items.len());
+        for item in items {
+            let result = self.create(item).await?;
+            results.push(result);
+        }
+        Ok(results)
     }
 
     async fn find_by_identity(&self, identity_id: Uuid) -> DbResult<Vec<IdentityUserModel>> {

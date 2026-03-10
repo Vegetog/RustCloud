@@ -13,6 +13,7 @@ pub struct CreateIdentityRequest {
     #[validate(length(min = 1, max = 255, message = "Identity name is required"))]
     pub name: String,
 
+    #[validate(length(max = 1000, message = "Description is too long"))]
     pub description: Option<String>,
 }
 
