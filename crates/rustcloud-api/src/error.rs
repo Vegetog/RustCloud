@@ -110,7 +110,6 @@ impl From<CoreError> for ApiError {
             CoreError::ShareLinkExpired => {
                 Self::new(StatusCode::GONE, "SHARE_EXPIRED", "Share link has expired")
             }
-            CoreError::InvalidSharePassword => Self::unauthorized("Invalid share password"),
             CoreError::RateLimitExceeded => Self::rate_limited(),
             CoreError::ValidationError(msg) => Self::bad_request(msg),
             CoreError::DatabaseError(msg) => {

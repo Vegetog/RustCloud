@@ -43,9 +43,6 @@ pub enum Error {
     #[error("Share link expired")]
     ShareLinkExpired,
 
-    #[error("Invalid share password")]
-    InvalidSharePassword,
-
     // 加密错误
     #[error("Encryption failed: {0}")]
     EncryptionFailed(String),

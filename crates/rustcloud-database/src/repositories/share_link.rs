@@ -56,7 +56,7 @@ impl ShareLinkRepositoryTrait for ShareLinkRepository {
             creator_id: Set(data.creator_id),
             access_token: Set(data.access_token),
             encrypted_key: Set(data.encrypted_key),
-            password_hash: Set(data.password_hash),
+            password_hash: Set(None),
             expires_at: Set(data.expires_at),
             max_access_count: Set(data.max_access_count),
             access_count: Set(0),

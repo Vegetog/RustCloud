@@ -2,16 +2,13 @@
 
 use axum::{
     body::Body,
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::{header, StatusCode},
     response::Response,
-    Json,
 };
 use chrono::{Duration, Utc};
-use serde::Deserialize;
 use uuid::Uuid;
 
-use rustcloud_auth::{check_password, create_password_hash};
 use rustcloud_core::utils::generate_token;
 use rustcloud_database::{
     CreateShareLink, DocumentKeyRepository, DocumentKeyRepositoryTrait, DocumentRepository,
@@ -19,7 +16,7 @@ use rustcloud_database::{
 };
 
 use crate::dto::{
-    AccessShareRequest, AccessShareResponse, CreateShareRequest, ShareLinkResponse, ShareListResponse,
+    AccessShareResponse, CreateShareRequest, ShareLinkResponse, ShareListResponse,
 };
 use crate::error::ApiError;
 use crate::extractors::{AuthUser, ValidatedJson};
@@ -28,11 +25,8 @@ use crate::state::AppState;
 
 use rustcloud_database::entities::share_link::Model as ShareLinkModel;
 
-/// 验证分享链接的过期时间、访问次数和密码
-fn validate_share_access(
-    share: &ShareLinkModel,
-    password: &Option<String>,
-) -> Result<(), ApiError> {
+/// 验证分享链接的过期时间和访问次数
+fn validate_share_access(share: &ShareLinkModel) -> Result<(), ApiError> {
     // 检查是否已过期
     if let Some(expires_at) = share.expires_at {
         if expires_at < Utc::now() {
@@ -52,18 +46,6 @@ fn validate_share_access(
                 "SHARE_MAX_ACCESS",
                 "Maximum access count reached",
             ));
-        }
-    }
-
-    // 若需要密码则进行验证
-    if let Some(ref password_hash) = share.password_hash {
-        let provided_password = password
-            .as_ref()
-            .ok_or_else(|| ApiError::unauthorized("Password required"))?;
-        let valid = check_password(provided_password, password_hash)
-            .map_err(|e| ApiError::internal(format!("Password verification failed: {}", e)))?;
-        if !valid {
-            return Err(ApiError::unauthorized("Invalid password"));
         }
     }
 
@@ -104,15 +86,6 @@ pub async fn create_share(
     // 生成访问令牌
     let access_token = generate_token();
 
-    // 若提供了密码则进行哈希
-    let password_hash = match &req.password {
-        Some(pwd) if !pwd.is_empty() => Some(
-            create_password_hash(pwd)
-                .map_err(|e| ApiError::internal(format!("Failed to hash password: {}", e)))?,
-        ),
-        _ => None,
-    };
-
     // 计算过期时间
     let expires_at = req.expires_in.map(|secs| Utc::now() + Duration::seconds(secs));
 
@@ -123,7 +96,6 @@ pub async fn create_share(
             creator_id: user.id,
             access_token: access_token.clone(),
             encrypted_key: req.encrypted_key,
-            password_hash: password_hash.clone(),
             expires_at,
             max_access_count: req.max_access_count,
         })
@@ -141,7 +113,6 @@ pub async fn create_share(
         id: share.id,
         document_id: share.document_id,
         access_token: share.access_token,
-        has_password: password_hash.is_some(),
         expires_at: share.expires_at,
         max_access_count: share.max_access_count,
         access_count: share.access_count,
@@ -169,7 +140,6 @@ pub async fn list_shares(
             id: s.id,
             document_id: s.document_id,
             access_token: s.access_token,
-            has_password: s.password_hash.is_some(),
             expires_at: s.expires_at,
             max_access_count: s.max_access_count,
             access_count: s.access_count,
@@ -218,25 +188,13 @@ pub async fn access_share_get(
     State(state): State<AppState>,
     Path(token): Path<String>,
 ) -> Result<ApiResponse<AccessShareResponse>, ApiError> {
-    access_share_internal(state, token, None).await
-}
-
-/// POST /api/v1/shares/access/:token
-///
-/// 使用密码访问分享文档（公开接口，无需认证）
-pub async fn access_share_post(
-    State(state): State<AppState>,
-    Path(token): Path<String>,
-    Json(req): Json<AccessShareRequest>,
-) -> Result<ApiResponse<AccessShareResponse>, ApiError> {
-    access_share_internal(state, token, req.password).await
+    access_share_internal(state, token).await
 }
 
 /// 处理分享访问的内部函数
 async fn access_share_internal(
     state: AppState,
     token: String,
-    password: Option<String>,
 ) -> Result<ApiResponse<AccessShareResponse>, ApiError> {
     let share_repo = ShareLinkRepository::new(state.db.clone());
     let doc_repo = DocumentRepository::new(state.db.clone());
@@ -248,10 +206,10 @@ async fn access_share_internal(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Share link"))?;
 
-    // 验证过期时间、访问次数和密码
-    validate_share_access(&share, &password)?;
+    // 验证过期时间和访问次数
+    validate_share_access(&share)?;
 
-    // 增加访问次数
+    // 访问分享元数据成功后增加访问次数（受前端去重保护，避免重复消耗）
     share_repo
         .increment_access_count(share.id)
         .await
@@ -275,18 +233,12 @@ async fn access_share_internal(
     }))
 }
 
-#[derive(Debug, Deserialize)]
-pub struct DownloadShareQuery {
-    password: Option<String>,
-}
-
 /// GET /api/v1/shares/access/:token/download
 ///
 /// 下载分享文档（公开接口）
 pub async fn download_shared_document(
     State(state): State<AppState>,
     Path(token): Path<String>,
-    Query(query): Query<DownloadShareQuery>,
 ) -> Result<Response, ApiError> {
     let share_repo = ShareLinkRepository::new(state.db.clone());
     let doc_repo = DocumentRepository::new(state.db.clone());
@@ -298,8 +250,8 @@ pub async fn download_shared_document(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Share link"))?;
 
-    // 验证过期时间、访问次数和密码
-    validate_share_access(&share, &query.password)?;
+    // 验证过期时间和访问次数
+    validate_share_access(&share)?;
 
     // 获取文档
     let doc = doc_repo
@@ -331,4 +283,45 @@ pub async fn download_shared_document(
         .map_err(|e| ApiError::internal(format!("Failed to build response: {}", e)))?;
 
     Ok(response)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_share(max_access_count: Option<i32>, access_count: i32, expires_at: Option<chrono::DateTime<Utc>>) -> ShareLinkModel {
+        ShareLinkModel {
+            id: Uuid::new_v4(),
+            document_id: Uuid::new_v4(),
+            creator_id: Uuid::new_v4(),
+            access_token: "token123".to_string(),
+            encrypted_key: "enc_key".to_string(),
+            password_hash: None,
+            expires_at,
+            max_access_count,
+            access_count,
+            created_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn validate_share_access_rejects_when_max_access_reached() {
+        let share = make_share(Some(3), 3, None);
+        let result = validate_share_access(&share);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_share_access_allows_when_below_max_access() {
+        let share = make_share(Some(3), 2, None);
+        let result = validate_share_access(&share);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_share_access_rejects_when_expired() {
+        let share = make_share(None, 0, Some(Utc::now() - Duration::seconds(1)));
+        let result = validate_share_access(&share);
+        assert!(result.is_err());
+    }
 }

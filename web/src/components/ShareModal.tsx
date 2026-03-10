@@ -38,10 +38,6 @@ interface LinkSharingContentProps {
   error: string | null;
   shareLink: string | null;
   copied: boolean;
-  usePassword: boolean;
-  setUsePassword: Dispatch<SetStateAction<boolean>>;
-  password: string;
-  setPassword: Dispatch<SetStateAction<string>>;
   useExpiration: boolean;
   setUseExpiration: Dispatch<SetStateAction<boolean>>;
   expirationHours: number;
@@ -75,8 +71,6 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
   const [loading, setLoading] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [usePassword, setUsePassword] = useState(false);
-  const [password, setPassword] = useState('');
   const [useExpiration, setUseExpiration] = useState(false);
   const [expirationHours, setExpirationHours] = useState(24);
   const [useMaxAccess, setUseMaxAccess] = useState(false);
@@ -115,11 +109,6 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
       return;
     }
 
-    if (usePassword && !password) {
-      setError('请输入分享密码');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
@@ -140,31 +129,17 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
       // 3. 用用户公钥重新加密文档密钥（用于 API 存储）
       const shareEncryptedKey = crypto.arrayBufferToBase64(encryptedKeyBuffer);
 
-      // 4. 计算过期时间
-      let expiresAt: string | null = null;
+      // 4. 计算过期秒数（后端字段为 expires_in）
+      let expiresIn: number | null = null;
       if (useExpiration) {
-        const expireDate = new Date();
-        expireDate.setHours(expireDate.getHours() + expirationHours);
-        expiresAt = expireDate.toISOString();
-      }
-
-      // 5. 若提供密码则进行哈希处理
-      let passwordHash: string | null = null;
-      if (usePassword && password) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-        passwordHash = Array.from(new Uint8Array(hashBuffer))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('');
+        expiresIn = expirationHours * 3600;
       }
 
       // 6. 通过 API 创建分享链接
       const response = await apiService.createShare({
         document_id: documentId,
         encrypted_key: shareEncryptedKey,
-        password_hash: passwordHash,
-        expires_at: expiresAt,
+        expires_in: expiresIn,
         max_access_count: useMaxAccess ? maxAccessCount : null,
       });
 
@@ -334,10 +309,6 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
                 error={error}
                 shareLink={shareLink}
                 copied={copied}
-                usePassword={usePassword}
-                setUsePassword={setUsePassword}
-                password={password}
-                setPassword={setPassword}
                 useExpiration={useExpiration}
                 setUseExpiration={setUseExpiration}
                 expirationHours={expirationHours}
@@ -410,10 +381,6 @@ function LinkSharingContent({
   error,
   shareLink,
   copied,
-  usePassword,
-  setUsePassword,
-  password,
-  setPassword,
   useExpiration,
   setUseExpiration,
   expirationHours,
@@ -435,32 +402,6 @@ function LinkSharingContent({
 
       {!shareLink ? (
         <>
-          {/* 密码保护 */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="usePassword"
-                checked={usePassword}
-                onChange={(e) => setUsePassword(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-2 focus:ring-blue-500/20"
-              />
-              <label htmlFor="usePassword" className="flex items-center space-x-2 cursor-pointer">
-                <Lock className="w-4 h-4 text-slate-600" />
-                <span className="text-sm font-medium text-slate-700">设置访问密码</span>
-              </label>
-            </div>
-            {usePassword && (
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="输入分享密码"
-                className="w-full border border-slate-200 rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-              />
-            )}
-          </div>
-
           {/* 有效期 */}
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -575,12 +516,6 @@ function LinkSharingContent({
           </div>
 
           <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
-            {usePassword && (
-              <div className="flex items-center space-x-2 text-slate-600">
-                <Lock className="w-4 h-4" />
-                <span>密码保护已启用</span>
-              </div>
-            )}
             {useExpiration && (
               <div className="flex items-center space-x-2 text-slate-600">
                 <Clock className="w-4 h-4" />
@@ -593,7 +528,7 @@ function LinkSharingContent({
                 <span>最多访问 {maxAccessCount} 次</span>
               </div>
             )}
-            {!usePassword && !useExpiration && !useMaxAccess && (
+            {!useExpiration && !useMaxAccess && (
               <p className="text-slate-500">无限制分享</p>
             )}
           </div>

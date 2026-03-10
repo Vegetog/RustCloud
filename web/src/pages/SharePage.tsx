@@ -1,6 +1,6 @@
 // 分享页面：通过公开链接访问文档
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { formatFileSize } from '../utils/format';
 import { isAxiosError } from 'axios';
 import { useParams } from 'react-router-dom';
@@ -10,7 +10,6 @@ import {
   Download,
   Loader2,
   AlertCircle,
-  Key,
   FileText,
   ShieldCheck,
 } from 'lucide-react';
@@ -32,10 +31,9 @@ export function SharePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shareData, setShareData] = useState<ShareAccessData | null>(null);
-  const [password, setPassword] = useState('');
-  const [passwordRequired, setPasswordRequired] = useState(false);
+  const initialLoadDoneRef = useRef(false);
 
-  const loadShare = useCallback(async (passwordOverride?: string) => {
+  const loadShare = useCallback(async () => {
     if (!token) {
       setError('无效的分享链接');
       setLoading(false);
@@ -46,7 +44,7 @@ export function SharePage() {
     setError(null);
 
     try {
-      const response = await apiService.accessShare(token, passwordOverride || undefined);
+      const response = await apiService.accessShare(token);
       setShareData(response.data.data);
       setLoading(false);
     } catch (err) {
@@ -57,12 +55,9 @@ export function SharePage() {
           ? err.message
           : undefined;
 
-      if (status === 401 && message?.includes('password')) {
-        setPasswordRequired(true);
-        setError('此分享链接需要密码');
-      } else if (status === 404) {
+      if (status === 404) {
         setError('分享链接不存在或已过期');
-      } else if (status === 403) {
+      } else if (status === 410) {
         setError('访问次数已用尽');
       } else {
         setError(message || '无法访问分享链接');
@@ -72,13 +67,12 @@ export function SharePage() {
   }, [token]);
 
   useEffect(() => {
+    if (initialLoadDoneRef.current) {
+      return;
+    }
+    initialLoadDoneRef.current = true;
     loadShare();
   }, [loadShare]);
-
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadShare(password);
-  };
 
   const handleDownload = async () => {
     if (!shareData || !token) return;
@@ -106,9 +100,7 @@ export function SharePage() {
       );
 
       // 下载加密文件
-      const downloadUrl = `/api/v1/shares/access/${token}/download${
-        password ? `?password=${encodeURIComponent(password)}` : ''
-      }`;
+      const downloadUrl = `/api/v1/shares/access/${token}/download`;
       const contentResponse = await fetch(downloadUrl);
       if (!contentResponse.ok) {
         throw new Error('文件下载失败');
@@ -183,60 +175,13 @@ export function SharePage() {
               <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
               <p className="text-slate-500">正在加载...</p>
             </div>
-          ) : error && !passwordRequired ? (
+          ) : error ? (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
                 <AlertCircle className="w-8 h-8 text-red-600" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">无法访问</h3>
               <p className="text-slate-600 text-center">{error}</p>
-            </div>
-          ) : passwordRequired && !shareData ? (
-            /* 密码验证表单 */
-            <div className="py-4">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Key className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">需要访问密码</h3>
-                <p className="text-slate-600 text-sm">此文件受密码保护，请输入密码以继续</p>
-              </div>
-
-              {error && (
-                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    分享密码
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="输入密码"
-                    className="w-full border border-slate-200 rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium shadow-lg shadow-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>验证中...</span>
-                    </>
-                  ) : (
-                    <span>验证密码</span>
-                  )}
-                </button>
-              </form>
             </div>
           ) : shareData ? (
             /* 文件信息和下载 */

@@ -312,7 +312,7 @@ class ApiService {
   /**
    * 访问分享链接（公开访问，无需认证）
    */
-  async accessShare(token: string, password?: string) {
+  async accessShare(token: string) {
     return this.client.get<{
       success: boolean;
       data: {
@@ -324,9 +324,7 @@ class ApiService {
         size: number;
         mime_type: string;
       };
-    }>(`/shares/access/${token}`, {
-      params: password ? { password } : undefined,
-    });
+    }>(`/shares/access/${token}`);
   }
 
 }

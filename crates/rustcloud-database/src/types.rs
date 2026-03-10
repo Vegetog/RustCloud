@@ -66,7 +66,6 @@ pub struct CreateShareLink {
     pub creator_id: Uuid,
     pub access_token: String,
     pub encrypted_key: String,
-    pub password_hash: Option<String>,
     pub expires_at: Option<DateTime<Utc>>,
     pub max_access_count: Option<i32>,
 }

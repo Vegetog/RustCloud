@@ -40,7 +40,6 @@ export interface ShareLink {
   document_id: string;
   access_token: string;
   encrypted_key: string;
-  password_hash: string | null;
   expires_at: string | null;
   max_access_count: number | null;
   access_count: number;
@@ -50,7 +49,6 @@ export interface ShareLink {
 export interface CreateShareRequest {
   document_id: string;
   encrypted_key: string;
-  password_hash?: string | null;
-  expires_at?: string | null;
+  expires_in?: number | null;
   max_access_count?: number | null;
 }

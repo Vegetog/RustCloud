@@ -15,20 +15,11 @@ pub struct CreateShareRequest {
     #[validate(length(min = 1, message = "Encrypted key is required"))]
     pub encrypted_key: String,
 
-    /// 分享链接的可选密码
-    pub password: Option<String>,
-
     /// 从当前时间起的可选过期秒数
     pub expires_in: Option<i64>,
 
     /// 可选最大访问次数
     pub max_access_count: Option<i32>,
-}
-
-/// 带密码访问分享请求
-#[derive(Debug, Deserialize)]
-pub struct AccessShareRequest {
-    pub password: Option<String>,
 }
 
 // ===== 响应 =====
@@ -39,7 +30,6 @@ pub struct ShareLinkResponse {
     pub id: Uuid,
     pub document_id: Uuid,
     pub access_token: String,
-    pub has_password: bool,
     pub expires_at: Option<DateTime<Utc>>,
     pub max_access_count: Option<i32>,
     pub access_count: i32,
