@@ -5,6 +5,7 @@
 //! # 功能特性
 //!
 //! - 用户、文档、文档密钥和分享链接的 SeaORM 实体定义
+//! - 身份管理实体和仓储
 //! - 用于数据访问抽象的仓储模式
 //! - 数据库连接池管理
 //!
@@ -42,18 +43,23 @@ pub use error::{DatabaseError, DbResult};
 pub use pagination::Page;
 
 // 重新导出实体
-pub use entities::{DocumentEntity, DocumentKeyEntity, PermissionLevel, ShareLinkEntity, UserEntity};
+pub use entities::{
+    DocumentEntity, DocumentKeyEntity, IdentityEntity, IdentityUserEntity, PermissionLevel,
+    ShareLinkEntity, UserEntity,
+};
 
 // 重新导出仓储
 pub use repositories::{
     DocumentKeyRepository, DocumentKeyRepositoryTrait, DocumentRepository, DocumentRepositoryTrait,
-    ShareLinkRepository, ShareLinkRepositoryTrait, UserRepository, UserRepositoryTrait,
+    IdentityRepository, IdentityRepositoryTrait, IdentityUserRepository,
+    IdentityUserRepositoryTrait, ShareLinkRepository, ShareLinkRepositoryTrait, UserRepository,
+    UserRepositoryTrait,
 };
 
 // 重新导出类型
 pub use types::{
-    CreateDocument, CreateDocumentKey, CreateShareLink, CreateUser, DocumentListParams, SortField,
-    SortOrder, UpdateDocument,
+    CreateDocument, CreateDocumentKey, CreateIdentity, CreateIdentityUser, CreateShareLink,
+    CreateUser, DocumentListParams, SortField, SortOrder, UpdateDocument, UpdateIdentity,
 };
 
 // 重新导出 sea_orm 供下游使用
