@@ -117,20 +117,25 @@ pub async fn get_identity(
         .await
         .map_err(ApiError::from)?;
 
-    let mut user_responses = Vec::with_capacity(identity_users.len());
-    for iu in &identity_users {
-        if let Some(u) = user_repo
-            .find_by_id(iu.user_id)
-            .await
-            .map_err(ApiError::from)?
-        {
-            user_responses.push(IdentityUserResponse {
+    let user_ids: Vec<Uuid> = identity_users.iter().map(|iu| iu.user_id).collect();
+    let users = user_repo
+        .find_by_ids(user_ids)
+        .await
+        .map_err(ApiError::from)?;
+
+    let user_map: std::collections::HashMap<Uuid, _> =
+        users.into_iter().map(|u| (u.id, u)).collect();
+
+    let user_responses: Vec<IdentityUserResponse> = identity_users
+        .iter()
+        .filter_map(|iu| {
+            user_map.get(&iu.user_id).map(|u| IdentityUserResponse {
                 user_id: u.id,
-                user_email: u.email,
+                user_email: u.email.clone(),
                 assigned_at: iu.assigned_at,
-            });
-        }
-    }
+            })
+        })
+        .collect();
 
     Ok(ApiResponse::success(IdentityDetailResponse {
         identity: IdentityResponse {
@@ -394,20 +399,25 @@ pub async fn list_identity_users(
         .await
         .map_err(ApiError::from)?;
 
-    let mut user_responses = Vec::with_capacity(identity_users.len());
-    for iu in &identity_users {
-        if let Some(u) = user_repo
-            .find_by_id(iu.user_id)
-            .await
-            .map_err(ApiError::from)?
-        {
-            user_responses.push(IdentityUserResponse {
+    let user_ids: Vec<Uuid> = identity_users.iter().map(|iu| iu.user_id).collect();
+    let users = user_repo
+        .find_by_ids(user_ids)
+        .await
+        .map_err(ApiError::from)?;
+
+    let user_map: std::collections::HashMap<Uuid, _> =
+        users.into_iter().map(|u| (u.id, u)).collect();
+
+    let user_responses: Vec<IdentityUserResponse> = identity_users
+        .iter()
+        .filter_map(|iu| {
+            user_map.get(&iu.user_id).map(|u| IdentityUserResponse {
                 user_id: u.id,
-                user_email: u.email,
+                user_email: u.email.clone(),
                 assigned_at: iu.assigned_at,
-            });
-        }
-    }
+            })
+        })
+        .collect();
 
     Ok(ApiResponse::success(user_responses))
 }

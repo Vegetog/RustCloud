@@ -80,12 +80,29 @@ impl IdentityUserRepositoryTrait for IdentityUserRepository {
     }
 
     async fn batch_create(&self, items: Vec<CreateIdentityUser>) -> DbResult<Vec<IdentityUserModel>> {
-        let mut results = Vec::with_capacity(items.len());
-        for item in items {
-            let result = self.create(item).await?;
-            results.push(result);
+        if items.is_empty() {
+            return Ok(vec![]);
         }
-        Ok(results)
+        let now = Utc::now();
+        let models: Vec<identity_user::ActiveModel> = items
+            .iter()
+            .map(|item| identity_user::ActiveModel {
+                id: Set(Uuid::new_v4()),
+                identity_id: Set(item.identity_id),
+                user_id: Set(item.user_id),
+                assigned_at: Set(now),
+            })
+            .collect();
+
+        let result = IdentityUser::insert_many(models).exec(&*self.db).await?;
+        // After bulk insert, query back the inserted records
+        let _ = result;
+        let inserted = IdentityUser::find()
+            .filter(identity_user::Column::IdentityId.eq(items[0].identity_id))
+            .filter(identity_user::Column::AssignedAt.eq(now))
+            .all(&*self.db)
+            .await?;
+        Ok(inserted)
     }
 
     async fn find_by_identity(&self, identity_id: Uuid) -> DbResult<Vec<IdentityUserModel>> {
@@ -146,10 +163,14 @@ impl IdentityUserRepositoryTrait for IdentityUserRepository {
         identity_id: Uuid,
         user_ids: Vec<Uuid>,
     ) -> DbResult<()> {
-        for user_id in user_ids {
-            // 逐一删除，忽略不存在的记录
-            let _ = self.delete_by_identity_and_user(identity_id, user_id).await;
+        if user_ids.is_empty() {
+            return Ok(());
         }
+        IdentityUser::delete_many()
+            .filter(identity_user::Column::IdentityId.eq(identity_id))
+            .filter(identity_user::Column::UserId.is_in(user_ids))
+            .exec(&*self.db)
+            .await?;
         Ok(())
     }
 }
