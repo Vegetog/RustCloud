@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Cloud, Mail, Key, CheckCircle, Loader2, ShieldCheck, Lock } from 'lucide-react';
+import { Cloud, Mail, Key, CheckCircle, Loader2, ShieldCheck, Lock, Users } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
 export function LoginPage() {
@@ -57,6 +57,7 @@ export function LoginPage() {
               { icon: ShieldCheck, text: 'RSA-2048 非对称加密' },
               { icon: CheckCircle, text: '细粒度权限控制' },
               { icon: CheckCircle, text: '安全文件分享' },
+              { icon: Users, text: '身份与角色管理' },
             ].map((item, idx) => (
               <div key={idx} className="flex items-center space-x-3 text-slate-300">
                 <div className="p-1 rounded-full bg-emerald-500/10 text-emerald-400">
