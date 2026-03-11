@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
 import { renderAsync as renderDocx } from 'docx-preview';
-import JSZip from 'jszip';
+import { init as initPptx } from 'pptx-preview';
 import * as XLSX from 'xlsx';
 import { apiService } from '../services/api';
 import { cryptoService } from '../services/crypto';
@@ -45,8 +45,10 @@ export function PreviewModal({
   const [docxBuffer, setDocxBuffer] = useState<ArrayBuffer | null>(null);
   const [docxRendering, setDocxRendering] = useState(false);
   const docxContainerRef = useRef<HTMLDivElement | null>(null);
-  // pptx：每张幻灯片提取的文字
-  const [pptxSlides, setPptxSlides] = useState<Array<{ index: number; texts: string[] }> | null>(null);
+  // pptx：解密后的原始 buffer，由 pptx-preview 渲染
+  const [pptxBuffer, setPptxBuffer] = useState<ArrayBuffer | null>(null);
+  const pptxContainerRef = useRef<HTMLDivElement | null>(null);
+  const pptxPreviewerRef = useRef<ReturnType<typeof initPptx> | null>(null);
   // xlsx：各工作表 HTML
   const [xlsxData, setXlsxData] = useState<{ sheetNames: string[]; sheets: string[] } | null>(null);
   const [activeXlsxSheet, setActiveXlsxSheet] = useState(0);
@@ -144,27 +146,8 @@ export function PreviewModal({
           // .docx：由 docx-preview 在客户端渲染
           setDocxBuffer(content.slice(0));
         } else if (isPptx) {
-          // .pptx：JSZip 解压 + 提取幻灯片文字
-          const zip = await JSZip.loadAsync(content);
-          const slideEntries = Object.keys(zip.files)
-            .filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
-            .sort((a, b) => {
-              const na = parseInt(a.match(/\d+/)![0]);
-              const nb = parseInt(b.match(/\d+/)![0]);
-              return na - nb;
-            });
-          const slides = await Promise.all(
-            slideEntries.map(async (path, i) => {
-              const xml = await zip.files[path].async('string');
-              const texts: string[] = [];
-              for (const m of xml.matchAll(/<a:t[^>]*>([^<]*)<\/a:t>/g)) {
-                const t = m[1].trim();
-                if (t) texts.push(t);
-              }
-              return { index: i + 1, texts };
-            })
-          );
-          setPptxSlides(slides);
+          // .pptx：存储 buffer，由 pptx-preview useEffect 渲染
+          setPptxBuffer(content.slice(0));
         } else if (isXlsx) {
           // .xlsx：SheetJS 解析 → 各 sheet 转 HTML 表格
           const workbook = XLSX.read(new Uint8Array(content), { type: 'array' });
@@ -212,7 +195,7 @@ export function PreviewModal({
         URL.revokeObjectURL(previewUrlRef.current);
         previewUrlRef.current = null;
       }
-      setPptxSlides(null);
+      setPptxBuffer(null);
       setXlsxData(null);
       setActiveXlsxSheet(0);
     };
@@ -245,6 +228,51 @@ export function PreviewModal({
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docxBuffer]);
+
+  // pptx 渲染：buffer 就绪且容器已挂载后执行
+  useEffect(() => {
+    if (!pptxBuffer || !pptxContainerRef.current) return;
+    const container = pptxContainerRef.current;
+
+    const doRender = (width: number) => {
+      container.innerHTML = '';
+      if (pptxPreviewerRef.current) {
+        pptxPreviewerRef.current.destroy();
+        pptxPreviewerRef.current = null;
+      }
+      // width 必须传像素值，否则库内部会设置 `width: undefinedpx` 导致容器塌陷全黑
+      const previewer = initPptx(container, { mode: 'list', width });
+      pptxPreviewerRef.current = previewer;
+      previewer.preview(pptxBuffer!).catch((err) => {
+        console.error('[pptx-preview] render error:', err);
+        setError('PPTX 文件解析失败，建议转换为 PDF 后预览');
+      });
+    };
+
+    const w = container.clientWidth;
+    if (w > 0) {
+      doRender(w);
+    } else {
+      // 容器尚未完成布局，等首次获得宽度后再渲染
+      const ro = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width;
+        if (width > 0) {
+          ro.disconnect();
+          doRender(width);
+        }
+      });
+      ro.observe(container);
+      return () => ro.disconnect();
+    }
+
+    return () => {
+      if (pptxPreviewerRef.current) {
+        pptxPreviewerRef.current.destroy();
+        pptxPreviewerRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pptxBuffer]);
 
   const renderPreview = () => {
     // 图片预览
@@ -293,29 +321,11 @@ export function PreviewModal({
       );
     }
 
-    // pptx：幻灯片文字卡片预览
-    if (pptxSlides !== null) {
+    // pptx：pptx-preview 视觉渲染
+    if (pptxBuffer !== null) {
       return (
-        <div className="w-full h-full overflow-auto bg-slate-100 p-4">
-          <div className="text-xs text-slate-500 text-center mb-4">
-            文本预览模式 · 共 {pptxSlides.length} 张幻灯片
-          </div>
-          <div className="space-y-3 max-w-3xl mx-auto">
-            {pptxSlides.map((slide) => (
-              <div key={slide.index} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-                <div className="text-xs font-semibold text-slate-400 mb-2">第 {slide.index} 张</div>
-                {slide.texts.length > 0 ? (
-                  <div className="space-y-1">
-                    {slide.texts.map((t, j) => (
-                      <p key={j} className="text-sm text-slate-700 leading-relaxed">{t}</p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-400 italic">（此幻灯片无文字内容）</p>
-                )}
-              </div>
-            ))}
-          </div>
+        <div className="w-full h-full overflow-auto bg-slate-50">
+          <div ref={pptxContainerRef} className="w-full" />
         </div>
       );
     }
