@@ -14,10 +14,12 @@ import {
   Share2,
   Users,
   Link as LinkIcon,
+  Shield,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { CryptoService } from '../services/crypto';
+import type { Identity } from '../types/identity';
 
 interface ShareModalProps {
   documentId: string;
@@ -25,7 +27,7 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
-type ShareTab = 'link' | 'user';
+type ShareTab = 'link' | 'user' | 'identity';
 
 interface SharedUser {
   user_id: string;
@@ -62,6 +64,19 @@ interface UserSharingContentProps {
   onRevokePermission: (userId: string) => void;
 }
 
+interface IdentitySharingContentProps {
+  error: string | null;
+  identities: Identity[];
+  loadingIdentities: boolean;
+  selectedIdentityId: string | null;
+  setSelectedIdentityId: Dispatch<SetStateAction<string | null>>;
+  identityPermissionLevel: 'read' | 'write';
+  setIdentityPermissionLevel: Dispatch<SetStateAction<'read' | 'write'>>;
+  grantingIdentity: boolean;
+  identityResult: { success: number; failed: string[] } | null;
+  onGrantIdentity: () => void;
+}
+
 export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProps) {
   const { privateKey, publicKey } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ShareTab>('link');
@@ -83,6 +98,14 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
   const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
+  // 身份分享状态
+  const [identities, setIdentities] = useState<Identity[]>([]);
+  const [loadingIdentities, setLoadingIdentities] = useState(false);
+  const [selectedIdentityId, setSelectedIdentityId] = useState<string | null>(null);
+  const [identityPermissionLevel, setIdentityPermissionLevel] = useState<'read' | 'write'>('read');
+  const [grantingIdentity, setGrantingIdentity] = useState(false);
+  const [identityResult, setIdentityResult] = useState<{ success: number; failed: string[] } | null>(null);
+
   // 切换到用户标签时加载已授权用户
   const loadSharedUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -102,6 +125,26 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
       void loadSharedUsers();
     }
   }, [activeTab, loadSharedUsers]);
+
+  // 切换到身份标签时加载身份列表
+  const loadIdentities = useCallback(async () => {
+    setLoadingIdentities(true);
+    try {
+      const response = await apiService.listIdentities();
+      setIdentities(response.data.data.identities);
+    } catch (err) {
+      console.error('Failed to load identities:', err);
+      setError('获取身份列表失败');
+    } finally {
+      setLoadingIdentities(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'identity') {
+      void loadIdentities();
+    }
+  }, [activeTab, loadIdentities]);
 
   const handleCreateShare = async () => {
     if (!privateKey || !publicKey) {
@@ -239,6 +282,74 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
     }
   };
 
+  const handleGrantIdentity = async () => {
+    if (!privateKey || !selectedIdentityId) {
+      setError('请选择一个身份');
+      return;
+    }
+
+    setGrantingIdentity(true);
+    setError(null);
+    setIdentityResult(null);
+
+    try {
+      const crypto = new CryptoService();
+
+      // 1. 获取身份下的用户列表
+      const identityResponse = await apiService.getIdentity(selectedIdentityId);
+      const identityUsers = identityResponse.data.data.users;
+
+      if (identityUsers.length === 0) {
+        setError('该身份下没有用户');
+        setGrantingIdentity(false);
+        return;
+      }
+
+      let successCount = 0;
+      const failedEmails: string[] = [];
+
+      // 2. 逐个为用户授权
+      for (const identityUser of identityUsers) {
+        try {
+          // 获取目标用户的公钥
+          const publicKeyResponse = await apiService.getUserPublicKey(identityUser.user_email);
+          const targetPublicKey = publicKeyResponse.data.data.public_key;
+
+          // 用私钥解密文档密钥，再用目标用户公钥重新加密
+          const reEncryptedKey = await crypto.reEncryptDocumentKey(
+            encryptedKey,
+            privateKey,
+            targetPublicKey
+          );
+
+          // 授予权限
+          await apiService.grantPermission(documentId, {
+            user_email: identityUser.user_email,
+            permission_level: identityPermissionLevel,
+            encrypted_key: reEncryptedKey,
+          });
+
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to grant permission to ${identityUser.user_email}:`, err);
+          failedEmails.push(identityUser.user_email);
+        }
+      }
+
+      setIdentityResult({ success: successCount, failed: failedEmails });
+      setGrantingIdentity(false);
+    } catch (err) {
+      console.error('Failed to grant identity permission:', err);
+      const errorMsg = isAxiosError(err)
+        ? ((err.response?.data as { message?: string } | undefined)?.message || err.message)
+        : err instanceof Error
+          ? err.message
+          : '身份分享失败';
+      setError(errorMsg);
+      setGrantingIdentity(false);
+    }
+  };
+
   const handleCopy = () => {
     if (shareLink) {
       navigator.clipboard.writeText(shareLink);
@@ -300,6 +411,17 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
               <Users className="w-4 h-4" />
               <span>指定用户</span>
             </button>
+            <button
+              onClick={() => setActiveTab('identity')}
+              className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'identity'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              <span>指定身份</span>
+            </button>
           </div>
 
           {/* 内容区 */}
@@ -319,7 +441,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
                 setMaxAccessCount={setMaxAccessCount}
                 onCopy={handleCopy}
               />
-            ) : (
+            ) : activeTab === 'user' ? (
               <UserSharingContent
                 error={error}
                 targetEmail={targetEmail}
@@ -331,6 +453,19 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
                 grantingPermission={grantingPermission}
                 onGrantPermission={handleGrantPermission}
                 onRevokePermission={handleRevokePermission}
+              />
+            ) : (
+              <IdentitySharingContent
+                error={error}
+                identities={identities}
+                loadingIdentities={loadingIdentities}
+                selectedIdentityId={selectedIdentityId}
+                setSelectedIdentityId={setSelectedIdentityId}
+                identityPermissionLevel={identityPermissionLevel}
+                setIdentityPermissionLevel={setIdentityPermissionLevel}
+                grantingIdentity={grantingIdentity}
+                identityResult={identityResult}
+                onGrantIdentity={handleGrantIdentity}
               />
             )}
           </div>
@@ -666,6 +801,160 @@ function UserSharingContent({
             <p className="font-medium mb-1">零知识密钥重加密</p>
             <p className="text-blue-700">
               文档密钥在本地重新加密后分享，服务器无法解密您的文件内容。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 身份分享标签组件
+function IdentitySharingContent({
+  error,
+  identities,
+  loadingIdentities,
+  selectedIdentityId,
+  setSelectedIdentityId,
+  identityPermissionLevel,
+  setIdentityPermissionLevel,
+  grantingIdentity,
+  identityResult,
+  onGrantIdentity,
+}: IdentitySharingContentProps) {
+  return (
+    <div className="space-y-5">
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-red-700">{error}</div>
+        </div>
+      )}
+
+      {identityResult && (
+        <div className={`rounded-lg p-4 flex items-start space-x-3 ${
+          identityResult.failed.length === 0
+            ? 'bg-emerald-50 border border-emerald-200'
+            : 'bg-amber-50 border border-amber-200'
+        }`}>
+          <CheckCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+            identityResult.failed.length === 0 ? 'text-emerald-600' : 'text-amber-600'
+          }`} />
+          <div className="text-sm">
+            <p className={identityResult.failed.length === 0 ? 'text-emerald-900' : 'text-amber-900'}>
+              成功授权 {identityResult.success} 位用户
+            </p>
+            {identityResult.failed.length > 0 && (
+              <p className="text-amber-700 mt-1">
+                以下用户授权失败（可能已拥有权限）：{identityResult.failed.join(', ')}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 身份选择 */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-slate-700">选择身份</label>
+        {loadingIdentities ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+          </div>
+        ) : identities.length === 0 ? (
+          <div className="text-center py-8">
+            <Shield className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm text-slate-500">尚未创建身份</p>
+            <p className="text-xs text-slate-400 mt-1">请先在身份管理页面创建身份并添加用户</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {identities.map((identity) => (
+              <button
+                key={identity.id}
+                onClick={() => setSelectedIdentityId(identity.id === selectedIdentityId ? null : identity.id)}
+                className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all text-left ${
+                  selectedIdentityId === identity.id
+                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
+                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={`p-1.5 rounded-lg ${
+                    selectedIdentityId === identity.id ? 'bg-blue-100' : 'bg-slate-100'
+                  }`}>
+                    <Shield className={`w-4 h-4 ${
+                      selectedIdentityId === identity.id ? 'text-blue-600' : 'text-slate-500'
+                    }`} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-slate-900">{identity.name}</div>
+                    {identity.description && (
+                      <div className="text-xs text-slate-500">{identity.description}</div>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs text-slate-400">{identity.user_count} 位用户</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 权限级别 */}
+      {identities.length > 0 && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700">权限级别</label>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setIdentityPermissionLevel('read')}
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                identityPermissionLevel === 'read'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              只读
+            </button>
+            <button
+              onClick={() => setIdentityPermissionLevel('write')}
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                identityPermissionLevel === 'write'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              读写
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 授权按钮 */}
+      {identities.length > 0 && (
+        <button
+          onClick={onGrantIdentity}
+          disabled={!selectedIdentityId || grantingIdentity}
+          className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+        >
+          {grantingIdentity ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>授权中...</span>
+            </>
+          ) : (
+            <span>向身份成员授权</span>
+          )}
+        </button>
+      )}
+
+      {/* 安全提示 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start space-x-3">
+          <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-900">
+            <p className="font-medium mb-1">零知识密钥重加密</p>
+            <p className="text-blue-700">
+              文档密钥将为身份中的每个用户单独重加密，服务器无法解密您的文件内容。
             </p>
           </div>
         </div>
