@@ -76,6 +76,25 @@ pub struct IdentityDetailResponse {
     pub users: Vec<IdentityUserResponse>,
 }
 
+/// 被授予的身份响应（包含分配时间）
+#[derive(Debug, Serialize)]
+pub struct GrantedIdentityResponse {
+    pub id: Uuid,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub creator_id: Uuid,
+    pub assigned_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// 被授予的身份列表响应
+#[derive(Debug, Serialize)]
+pub struct GrantedIdentityListResponse {
+    pub identities: Vec<GrantedIdentityResponse>,
+}
+
 /// 批量操作响应
 #[derive(Debug, Serialize)]
 pub struct BatchOperationResponse {

@@ -17,19 +17,27 @@ import {
   AlertCircle,
   X,
   ChevronLeft,
+  Shield,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { apiService } from '../services/api';
-import type { Identity, IdentityUser } from '../types/identity';
+import type { Identity, IdentityUser, GrantedIdentity } from '../types/identity';
 
 export function IdentitiesPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
 
+  // 标签页状态：'managed' = 我管理的身份, 'granted' = 我被授予的身份
+  const [activeTab, setActiveTab] = useState<'managed' | 'granted'>('managed');
+
   // 身份列表状态
   const [identities, setIdentities] = useState<Identity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 被授予的身份列表状态
+  const [grantedIdentities, setGrantedIdentities] = useState<GrantedIdentity[]>([]);
+  const [loadingGranted, setLoadingGranted] = useState(false);
 
   // 创建身份弹窗
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -69,9 +77,22 @@ export function IdentitiesPage() {
     }
   }, []);
 
+  const loadGrantedIdentities = useCallback(async () => {
+    setLoadingGranted(true);
+    try {
+      const response = await apiService.listGrantedIdentities();
+      setGrantedIdentities(response.data.data.identities);
+    } catch {
+      // 静默失败，不影响主页面
+    } finally {
+      setLoadingGranted(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadIdentities();
-  }, [loadIdentities]);
+    loadGrantedIdentities();
+  }, [loadIdentities, loadGrantedIdentities]);
 
   const handleLogout = () => {
     logout();
@@ -313,7 +334,7 @@ export function IdentitiesPage() {
                   <span>添加用户</span>
                 </button>
               </>
-            ) : (
+            ) : activeTab === 'managed' ? (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -321,9 +342,53 @@ export function IdentitiesPage() {
                 <Plus className="w-4 h-4" />
                 <span>新建身份</span>
               </button>
-            )}
+            ) : null}
           </div>
         </header>
+
+        {/* 标签页（非详情视图时显示） */}
+        {!selectedIdentity && (
+          <div className="bg-white border-b border-slate-200 px-6">
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setActiveTab('managed')}
+                className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'managed'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>我管理的身份</span>
+                {identities.length > 0 && (
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
+                    activeTab === 'managed' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {identities.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('granted')}
+                className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'granted'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>我被授予的身份</span>
+                {grantedIdentities.length > 0 && (
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
+                    activeTab === 'granted' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {grantedIdentities.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 错误提示 */}
         {error && (
@@ -433,68 +498,113 @@ export function IdentitiesPage() {
                 </div>
               )}
             </div>
-          ) : identities.length === 0 ? (
-            /* 空状态 */
-            <div className="text-center py-20">
-              <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-600 mb-2">暂无身份</h3>
-              <p className="text-sm text-slate-400 mb-6">创建身份来批量管理用户组</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center space-x-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>新建身份</span>
-              </button>
-            </div>
-          ) : (
-            /* 身份列表 */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {identities.map((identity) => (
-                <div
-                  key={identity.id}
-                  className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleSelectIdentity(identity)}
+          ) : activeTab === 'managed' ? (
+            /* 我管理的身份 */
+            identities.length === 0 ? (
+              /* 空状态 */
+              <div className="text-center py-20">
+                <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-600 mb-2">暂无身份</h3>
+                <p className="text-sm text-slate-400 mb-6">创建身份来批量管理用户组</p>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-blue-50 p-2.5 rounded-lg">
-                        <Users className="w-5 h-5 text-blue-600" />
+                  <Plus className="w-4 h-4" />
+                  <span>新建身份</span>
+                </button>
+              </div>
+            ) : (
+              /* 身份列表 */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {identities.map((identity) => (
+                  <div
+                    key={identity.id}
+                    className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handleSelectIdentity(identity)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-blue-50 p-2.5 rounded-lg">
+                          <Users className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-slate-800">{identity.name}</h3>
+                          <p className="text-xs text-slate-400">{identity.user_count} 位用户</p>
+                        </div>
+                      </div>
+                      <div
+                        className="flex items-center space-x-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => openEditModal(identity)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="编辑"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(identity)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="删除"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    {identity.description && (
+                      <p className="text-sm text-slate-500 line-clamp-2">{identity.description}</p>
+                    )}
+                    <p className="text-xs text-slate-400 mt-3">
+                      {new Date(identity.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            /* 我被授予的身份 */
+            loadingGranted ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              </div>
+            ) : grantedIdentities.length === 0 ? (
+              <div className="text-center py-20">
+                <Shield className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-600 mb-2">暂无被授予的身份</h3>
+                <p className="text-sm text-slate-400">当其他用户将您添加到身份中时，将在此处显示</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {grantedIdentities.map((identity) => (
+                  <div
+                    key={identity.id}
+                    className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="bg-indigo-50 p-2.5 rounded-lg">
+                        <Shield className="w-5 h-5 text-indigo-600" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-slate-800">{identity.name}</h3>
-                        <p className="text-xs text-slate-400">{identity.user_count} 位用户</p>
+                        <p className="text-xs text-slate-400">
+                          授予于 {new Date(identity.assigned_at).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
-                    <div
-                      className="flex items-center space-x-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => openEditModal(identity)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="编辑"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(identity)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    {identity.description && (
+                      <p className="text-sm text-slate-500 line-clamp-2 mb-3">{identity.description}</p>
+                    )}
+                    <div className="pt-3 border-t border-slate-100">
+                      <p className="text-xs text-slate-400">
+                        创建于 {new Date(identity.created_at).toLocaleDateString()}
+                      </p>
                     </div>
                   </div>
-                  {identity.description && (
-                    <p className="text-sm text-slate-500 line-clamp-2">{identity.description}</p>
-                  )}
-                  <p className="text-xs text-slate-400 mt-3">
-                    {new Date(identity.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </main>

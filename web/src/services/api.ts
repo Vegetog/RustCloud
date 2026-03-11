@@ -15,6 +15,7 @@ import type {
   IdentityListResponse,
   IdentityDetailResponse,
   IdentityUser,
+  GrantedIdentityListResponse,
   CreateIdentityRequest,
   UpdateIdentityRequest,
   BatchAddUsersRequest,
@@ -352,6 +353,13 @@ class ApiService {
    */
   async listIdentities() {
     return this.client.get<{ success: boolean; data: IdentityListResponse }>('/identities');
+  }
+
+  /**
+   * 获取当前用户被授予的身份列表
+   */
+  async listGrantedIdentities() {
+    return this.client.get<{ success: boolean; data: GrantedIdentityListResponse }>('/identities/granted');
   }
 
   /**

@@ -11,8 +11,9 @@ use rustcloud_database::{
 
 use crate::dto::{
     BatchAddUsersRequest, BatchOperationResponse, BatchRemoveUsersRequest,
-    CreateIdentityRequest, IdentityDetailResponse, IdentityListResponse, IdentityResponse,
-    IdentityUserResponse, UpdateIdentityRequest,
+    CreateIdentityRequest, GrantedIdentityListResponse, GrantedIdentityResponse,
+    IdentityDetailResponse, IdentityListResponse, IdentityResponse, IdentityUserResponse,
+    UpdateIdentityRequest,
 };
 use crate::error::ApiError;
 use crate::extractors::{AuthUser, ValidatedJson};
@@ -420,4 +421,43 @@ pub async fn list_identity_users(
         .collect();
 
     Ok(ApiResponse::success(user_responses))
+}
+
+/// GET /api/v1/identities/granted
+///
+/// 列出当前用户被授予的身份
+pub async fn list_granted_identities(
+    State(state): State<AppState>,
+    AuthUser(user): AuthUser,
+) -> Result<ApiResponse<GrantedIdentityListResponse>, ApiError> {
+    let identity_repo = IdentityRepository::new(state.db.clone());
+    let iu_repo = IdentityUserRepository::new(state.db.clone());
+
+    let identity_users = iu_repo
+        .find_by_user(user.id)
+        .await
+        .map_err(ApiError::from)?;
+
+    let mut granted_identities = Vec::with_capacity(identity_users.len());
+    for iu in &identity_users {
+        if let Some(identity) = identity_repo
+            .find_by_id(iu.identity_id)
+            .await
+            .map_err(ApiError::from)?
+        {
+            granted_identities.push(GrantedIdentityResponse {
+                id: identity.id,
+                name: identity.name,
+                description: identity.description,
+                creator_id: identity.creator_id,
+                assigned_at: iu.assigned_at,
+                created_at: identity.created_at,
+                updated_at: identity.updated_at,
+            });
+        }
+    }
+
+    Ok(ApiResponse::success(GrantedIdentityListResponse {
+        identities: granted_identities,
+    }))
 }
