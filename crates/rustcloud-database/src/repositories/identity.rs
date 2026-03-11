@@ -20,6 +20,9 @@ pub trait IdentityRepositoryTrait: Send + Sync {
     /// 根据 ID 查询身份
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<IdentityModel>>;
 
+    /// 根据 ID 列表批量查询身份
+    async fn find_by_ids(&self, ids: Vec<Uuid>) -> DbResult<Vec<IdentityModel>>;
+
     /// 查询用户创建的全部身份
     async fn find_by_creator(&self, creator_id: Uuid) -> DbResult<Vec<IdentityModel>>;
 
@@ -63,6 +66,17 @@ impl IdentityRepositoryTrait for IdentityRepository {
 
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<IdentityModel>> {
         let result = Identity::find_by_id(id).one(&*self.db).await?;
+        Ok(result)
+    }
+
+    async fn find_by_ids(&self, ids: Vec<Uuid>) -> DbResult<Vec<IdentityModel>> {
+        if ids.is_empty() {
+            return Ok(vec![]);
+        }
+        let result = Identity::find()
+            .filter(identity::Column::Id.is_in(ids))
+            .all(&*self.db)
+            .await?;
         Ok(result)
     }
 

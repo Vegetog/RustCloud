@@ -71,6 +71,7 @@ pub fn create_router(state: AppState) -> Router {
     let identity_routes = Router::new()
         .route("/", post(handlers::identity::create_identity))
         .route("/", get(handlers::identity::list_identities))
+        .route("/granted", get(handlers::identity::list_granted_identities))
         .route("/:id", get(handlers::identity::get_identity))
         .route("/:id", axum::routing::put(handlers::identity::update_identity))
         .route("/:id", delete(handlers::identity::delete_identity))

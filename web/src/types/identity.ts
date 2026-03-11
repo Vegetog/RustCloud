@@ -25,6 +25,20 @@ export interface IdentityDetailResponse {
   users: IdentityUser[];
 }
 
+export interface GrantedIdentity {
+  id: string;
+  name: string;
+  description?: string;
+  creator_id: string;
+  assigned_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GrantedIdentityListResponse {
+  identities: GrantedIdentity[];
+}
+
 export interface CreateIdentityRequest {
   name: string;
   description?: string;
