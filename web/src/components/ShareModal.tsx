@@ -308,9 +308,9 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
       let successCount = 0;
       const failedEmails: string[] = [];
 
-      // 2. 逐个为用户授权
-      for (const identityUser of identityUsers) {
-        try {
+      // 2. 并行为所有用户授权（提高性能）
+      const results = await Promise.allSettled(
+        identityUsers.map(async (identityUser) => {
           // 获取目标用户的公钥
           const publicKeyResponse = await apiService.getUserPublicKey(identityUser.user_email);
           const targetPublicKey = publicKeyResponse.data.data.public_key;
@@ -329,10 +329,17 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
             encrypted_key: reEncryptedKey,
           });
 
+          return identityUser.user_email;
+        })
+      );
+
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (result.status === 'fulfilled') {
           successCount++;
-        } catch (err) {
-          console.error(`Failed to grant permission to ${identityUser.user_email}:`, err);
-          failedEmails.push(identityUser.user_email);
+        } else {
+          console.error(`Failed to grant permission to ${identityUsers[i].user_email}:`, result.reason);
+          failedEmails.push(identityUsers[i].user_email);
         }
       }
 
