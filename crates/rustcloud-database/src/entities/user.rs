@@ -39,6 +39,12 @@ pub enum Relation {
 
     #[sea_orm(has_many = "super::share_link::Entity")]
     ShareLinks,
+
+    #[sea_orm(has_many = "super::identity::Entity")]
+    Identities,
+
+    #[sea_orm(has_many = "super::identity_user::Entity")]
+    IdentityUsers,
 }
 
 impl Related<super::document::Entity> for Entity {
@@ -56,6 +62,18 @@ impl Related<super::document_key::Entity> for Entity {
 impl Related<super::share_link::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ShareLinks.def()
+    }
+}
+
+impl Related<super::identity::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Identities.def()
+    }
+}
+
+impl Related<super::identity_user::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::IdentityUsers.def()
     }
 }
 

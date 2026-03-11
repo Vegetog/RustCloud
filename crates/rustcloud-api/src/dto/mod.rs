@@ -2,8 +2,10 @@
 
 pub mod auth;
 pub mod document;
+pub mod identity;
 pub mod share;
 
 pub use auth::*;
 pub use document::*;
+pub use identity::*;
 pub use share::*;

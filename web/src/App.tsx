@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DocumentsPage } from './pages/DocumentsPage';
+import { IdentitiesPage } from './pages/IdentitiesPage';
 import { SharePage } from './pages/SharePage';
 import { CryptoVisualPage } from './pages/CryptoVisualPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -20,6 +21,14 @@ function App() {
           element={
             <ProtectedRoute>
               <DocumentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/identities"
+          element={
+            <ProtectedRoute>
+              <IdentitiesPage />
             </ProtectedRoute>
           }
         />

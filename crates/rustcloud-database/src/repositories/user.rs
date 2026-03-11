@@ -20,6 +20,9 @@ pub trait UserRepositoryTrait: Send + Sync {
     /// 根据 ID 查询用户
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<UserModel>>;
 
+    /// 根据多个 ID 批量查询用户
+    async fn find_by_ids(&self, ids: Vec<Uuid>) -> DbResult<Vec<UserModel>>;
+
     /// 根据邮箱查找用户
     async fn find_by_email(&self, email: &str) -> DbResult<Option<UserModel>>;
 
@@ -61,6 +64,17 @@ impl UserRepositoryTrait for UserRepository {
 
     async fn find_by_id(&self, id: Uuid) -> DbResult<Option<UserModel>> {
         let result = User::find_by_id(id).one(&*self.db).await?;
+        Ok(result)
+    }
+
+    async fn find_by_ids(&self, ids: Vec<Uuid>) -> DbResult<Vec<UserModel>> {
+        if ids.is_empty() {
+            return Ok(vec![]);
+        }
+        let result = User::find()
+            .filter(user::Column::Id.is_in(ids))
+            .all(&*self.db)
+            .await?;
         Ok(result)
     }
 
@@ -134,6 +148,25 @@ mod tests {
 
         assert!(result.is_some());
         assert_eq!(result.unwrap().id, user_id);
+    }
+
+    #[tokio::test]
+    async fn test_find_by_ids() {
+        let user1 = mock_user();
+        let user2 = UserModel {
+            id: Uuid::new_v4(),
+            email: "test2@example.com".to_string(),
+            ..mock_user()
+        };
+
+        let db = MockDatabase::new(DatabaseBackend::Postgres)
+            .append_query_results([vec![user1.clone(), user2.clone()]])
+            .into_connection();
+
+        let repo = UserRepository::new(Arc::new(db));
+        let result = repo.find_by_ids(vec![user1.id, user2.id]).await.unwrap();
+
+        assert_eq!(result.len(), 2);
     }
 
 }

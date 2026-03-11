@@ -70,6 +70,30 @@ pub struct CreateShareLink {
     pub max_access_count: Option<i32>,
 }
 
+// ========== 身份 DTO ==========
+
+/// 创建新身份所需数据
+#[derive(Debug, Clone)]
+pub struct CreateIdentity {
+    pub name: String,
+    pub description: Option<String>,
+    pub creator_id: Uuid,
+}
+
+/// 更新身份所需数据
+#[derive(Debug, Clone)]
+pub struct UpdateIdentity {
+    pub name: Option<String>,
+    pub description: Option<Option<String>>,
+}
+
+/// 创建身份-用户关联所需数据
+#[derive(Debug, Clone)]
+pub struct CreateIdentityUser {
+    pub identity_id: Uuid,
+    pub user_id: Uuid,
+}
+
 // ========== 查询参数 ==========
 
 /// 文档列表查询参数

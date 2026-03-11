@@ -10,6 +10,17 @@ import type {
   UploadMetadata,
   ShareLink,
 } from '../types/document';
+import type {
+  Identity,
+  IdentityListResponse,
+  IdentityDetailResponse,
+  IdentityUser,
+  CreateIdentityRequest,
+  UpdateIdentityRequest,
+  BatchAddUsersRequest,
+  BatchRemoveUsersRequest,
+  BatchOperationResponse,
+} from '../types/identity';
 
 class ApiService {
   private client: AxiosInstance;
@@ -325,6 +336,70 @@ class ApiService {
         mime_type: string;
       };
     }>(`/shares/access/${token}`);
+  }
+
+  // ===== 身份 API =====
+
+  /**
+   * 创建新身份
+   */
+  async createIdentity(data: CreateIdentityRequest) {
+    return this.client.post<{ success: boolean; data: Identity }>('/identities', data);
+  }
+
+  /**
+   * 获取身份列表
+   */
+  async listIdentities() {
+    return this.client.get<{ success: boolean; data: IdentityListResponse }>('/identities');
+  }
+
+  /**
+   * 获取身份详情
+   */
+  async getIdentity(id: string) {
+    return this.client.get<{ success: boolean; data: IdentityDetailResponse }>(`/identities/${id}`);
+  }
+
+  /**
+   * 更新身份
+   */
+  async updateIdentity(id: string, data: UpdateIdentityRequest) {
+    return this.client.put<{ success: boolean; data: Identity }>(`/identities/${id}`, data);
+  }
+
+  /**
+   * 删除身份
+   */
+  async deleteIdentity(id: string) {
+    return this.client.delete(`/identities/${id}`);
+  }
+
+  /**
+   * 批量添加用户到身份
+   */
+  async batchAddUsersToIdentity(id: string, data: BatchAddUsersRequest) {
+    return this.client.post<{ success: boolean; data: BatchOperationResponse }>(
+      `/identities/${id}/users`,
+      data
+    );
+  }
+
+  /**
+   * 批量移除身份中的用户
+   */
+  async batchRemoveUsersFromIdentity(id: string, data: BatchRemoveUsersRequest) {
+    return this.client.delete<{ success: boolean; data: BatchOperationResponse }>(
+      `/identities/${id}/users`,
+      { data }
+    );
+  }
+
+  /**
+   * 获取身份下的用户列表
+   */
+  async listIdentityUsers(id: string) {
+    return this.client.get<{ success: boolean; data: IdentityUser[] }>(`/identities/${id}/users`);
   }
 
 }

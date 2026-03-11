@@ -67,12 +67,24 @@ pub fn create_router(state: AppState) -> Router {
         .route("/upload", post(handlers::storage::upload_file))
         .layer(DefaultBodyLimit::max(MAX_FILE_SIZE));
 
+    // 受保护的身份路由
+    let identity_routes = Router::new()
+        .route("/", post(handlers::identity::create_identity))
+        .route("/", get(handlers::identity::list_identities))
+        .route("/:id", get(handlers::identity::get_identity))
+        .route("/:id", axum::routing::put(handlers::identity::update_identity))
+        .route("/:id", delete(handlers::identity::delete_identity))
+        .route("/:id/users", post(handlers::identity::batch_add_users))
+        .route("/:id/users", get(handlers::identity::list_identity_users))
+        .route("/:id/users", delete(handlers::identity::batch_remove_users));
+
     // 组合受保护路由并挂载认证中间件
     let protected_routes = Router::new()
         .nest("/auth", protected_auth_routes)
         .nest("/documents", document_routes)
         .nest("/shares", protected_share_routes)
         .nest("/storage", storage_routes)
+        .nest("/identities", identity_routes)
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,

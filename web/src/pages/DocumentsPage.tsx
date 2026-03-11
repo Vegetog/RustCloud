@@ -27,6 +27,7 @@ import {
   AlertCircle,
   Eye,
   Info,
+  Users,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
@@ -279,6 +280,13 @@ export function DocumentsPage() {
           >
             <Home className="w-5 h-5 text-white" />
             <span className="font-medium text-sm">全部文件</span>
+          </button>
+          <button
+            onClick={() => navigate('/identities')}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all text-slate-400 hover:text-white hover:bg-slate-800"
+          >
+            <Users className="w-5 h-5" />
+            <span className="font-medium text-sm">身份管理</span>
           </button>
         </nav>
 
