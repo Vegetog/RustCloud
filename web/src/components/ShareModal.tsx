@@ -333,8 +333,7 @@ export function ShareModal({ documentId, encryptedKey, onClose }: ShareModalProp
         })
       );
 
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i];
+      for (const [i, result] of results.entries()) {
         if (result.status === 'fulfilled') {
           successCount++;
         } else {
