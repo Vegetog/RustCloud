@@ -568,7 +568,7 @@ export function DocumentsPage() {
       {previewDocument && (
         <PreviewModal
           documentId={previewDocument.id}
-          fileName={previewDocument.encrypted_name}
+          fileName={previewDocument.decrypted_name || previewDocument.encrypted_name}
           mimeType={previewDocument.mime_type}
           encryptedKey={previewDocument.encrypted_key}
           encryptedName={previewDocument.encrypted_name}

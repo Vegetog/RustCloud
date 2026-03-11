@@ -72,3 +72,30 @@ a {
     transform: scale(1);
   }
 }
+
+/* SheetJS 生成的 xlsx 表格样式 */
+.xlsx-table-wrapper table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  width: max-content;
+  min-width: 100%;
+}
+
+.xlsx-table-wrapper td,
+.xlsx-table-wrapper th {
+  border: 1px solid #e2e8f0;
+  padding: 0.375rem 0.75rem;
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xlsx-table-wrapper tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+
+.xlsx-table-wrapper tr:first-child td {
+  font-weight: 600;
+  background-color: #f1f5f9;
+}
