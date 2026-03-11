@@ -438,24 +438,29 @@ pub async fn list_granted_identities(
         .await
         .map_err(ApiError::from)?;
 
-    let mut granted_identities = Vec::with_capacity(identity_users.len());
-    for iu in &identity_users {
-        if let Some(identity) = identity_repo
-            .find_by_id(iu.identity_id)
-            .await
-            .map_err(ApiError::from)?
-        {
-            granted_identities.push(GrantedIdentityResponse {
+    let identity_ids: Vec<Uuid> = identity_users.iter().map(|iu| iu.identity_id).collect();
+    let identities = identity_repo
+        .find_by_ids(identity_ids)
+        .await
+        .map_err(ApiError::from)?;
+
+    let identity_map: std::collections::HashMap<Uuid, _> =
+        identities.into_iter().map(|i| (i.id, i)).collect();
+
+    let granted_identities: Vec<GrantedIdentityResponse> = identity_users
+        .iter()
+        .filter_map(|iu| {
+            identity_map.get(&iu.identity_id).map(|identity| GrantedIdentityResponse {
                 id: identity.id,
-                name: identity.name,
-                description: identity.description,
+                name: identity.name.clone(),
+                description: identity.description.clone(),
                 creator_id: identity.creator_id,
                 assigned_at: iu.assigned_at,
                 created_at: identity.created_at,
                 updated_at: identity.updated_at,
-            });
-        }
-    }
+            })
+        })
+        .collect();
 
     Ok(ApiResponse::success(GrantedIdentityListResponse {
         identities: granted_identities,

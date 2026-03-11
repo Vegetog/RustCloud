@@ -82,8 +82,11 @@ export function IdentitiesPage() {
     try {
       const response = await apiService.listGrantedIdentities();
       setGrantedIdentities(response.data.data.identities);
-    } catch {
-      // 静默失败，不影响主页面
+    } catch (err) {
+      const message = isAxiosError(err)
+        ? ((err.response?.data as { error?: { message?: string } })?.error?.message || err.message)
+        : err instanceof Error ? err.message : '未知错误';
+      setError(message);
     } finally {
       setLoadingGranted(false);
     }
