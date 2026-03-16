@@ -391,28 +391,35 @@ pub async fn update_document(
         return Err(ApiError::forbidden("Read-only users cannot edit document"));
     }
 
-    // 3. 验证锁的归属
+    // 3. 验证锁的归属（协同编辑模式下 lock_id 为 None，跳过锁检查）
     use crate::services::DocumentLockManager;
     let lock_manager = DocumentLockManager::new(state.redis.clone());
-    let lock_info = lock_manager.get_lock_info(id).await
-        .map_err(|e| ApiError::internal(format!("Failed to get lock info: {}", e)))?;
 
-    if lock_info.is_none() || lock_info.unwrap().lock_id != req.lock_id {
-        return Err(ApiError::conflict("You don't own the editing lock"));
-    }
-
-    // 4. 验证版本号（乐观锁）
     let current_doc = doc_repo
         .find_by_id(id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    if current_doc.version != req.expected_version {
-        return Err(ApiError::conflict(
-            "Document was modified by another user. Please refresh and retry."
-        ));
+    if let Some(ref lock_id) = req.lock_id {
+        // 独占锁模式：验证锁归属
+        let lock_info = lock_manager.get_lock_info(id).await
+            .map_err(|e| ApiError::internal(format!("Failed to get lock info: {}", e)))?;
+
+        if lock_info.is_none() || lock_info.unwrap().lock_id != *lock_id {
+            return Err(ApiError::conflict("You don't own the editing lock"));
+        }
+
+        // 4a. 验证版本号（乐观锁）
+        if let Some(expected_version) = req.expected_version {
+            if current_doc.version != expected_version {
+                return Err(ApiError::conflict(
+                    "Document was modified by another user. Please refresh and retry."
+                ));
+            }
+        }
     }
+    // 协同编辑模式（lock_id 为 None）：跳过锁和版本检查，直接保存（最后写入胜出）
 
     // 5. 更新数据库中的文档并递增版本号
     let update_data = UpdateDocument {
@@ -428,8 +435,10 @@ pub async fn update_document(
 
     let updated_doc = doc_repo.update(id, update_data).await.map_err(ApiError::from)?;
 
-    // 6. 保存成功后释放锁
-    lock_manager.release_lock(id, &req.lock_id).await.ok(); // 忽略释放锁的错误
+    // 6. 保存成功后释放锁（仅独占锁模式）
+    if let Some(ref lock_id) = req.lock_id {
+        lock_manager.release_lock(id, lock_id).await.ok();
+    }
 
     tracing::info!(
         "Document updated: {} by user {} ({:?})",

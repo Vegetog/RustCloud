@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { isAxiosError } from 'axios';
-import { X, Loader2, Save, Code2, AlertCircle, Lock } from 'lucide-react';
+import { X, Loader2, Save, Code2, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import Editor from '@monaco-editor/react';
+import type { OnMount } from '@monaco-editor/react';
+import * as Y from 'yjs';
+import { MonacoBinding } from 'y-monaco';
 import { CryptoService } from '../services/crypto';
+import type { CollaboratorInfo } from '../services/yjsWsProvider';
+import { EncryptedYjsWsProvider, generateUserColor } from '../services/yjsWsProvider';
 import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 
@@ -13,6 +18,7 @@ interface DocumentEditorModalProps {
   encryptedName: string;
   nameNonce: string;
   contentNonce: string;
+  permissionLevel?: 'owner' | 'write' | 'read';
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -24,278 +30,258 @@ export function DocumentEditorModal({
   encryptedName,
   nameNonce,
   contentNonce,
+  permissionLevel = 'write',
   onClose,
   onSuccess,
 }: DocumentEditorModalProps) {
-  const { privateKey } = useAuthStore();
+  const { privateKey, user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [content, setContent] = useState<string>('');
-  const [originalContent, setOriginalContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
 
-  // 编辑锁相关状态
-  const [lockId, setLockId] = useState<string | null>(null);
-  const [version, setVersion] = useState<number>(0);
-  const [lockError, setLockError] = useState<string | null>(null);
-  const [isHeartbeatActive, setIsHeartbeatActive] = useState(false);
+  // 协同编辑状态
+  const [onlineUsers, setOnlineUsers] = useState<CollaboratorInfo[]>([]);
+  const [wsConnected, setWsConnected] = useState(false);
 
-  // 验证必需参数
-  if (!documentId || !fileName || !encryptedKey || !privateKey) {
-    console.error('Missing required props:', {
-      documentId,
-      fileName,
-      encryptedKey: !!encryptedKey,
-      privateKey: !!privateKey,
-    });
-  }
+  // Yjs 相关 refs
+  const ydocRef = useRef<Y.Doc | null>(null);
+  const providerRef = useRef<EncryptedYjsWsProvider | null>(null);
+  const bindingRef = useRef<MonacoBinding | null>(null);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+
+  const canWrite = permissionLevel === 'owner' || permissionLevel === 'write';
 
   // 从文件名推断语言
-  const getLanguage = (fileName: string): string => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
+  const getLanguage = (name: string): string => {
+    const ext = name.split('.').pop()?.toLowerCase();
     const languageMap: Record<string, string> = {
-      'js': 'javascript',
-      'jsx': 'javascript',
-      'ts': 'typescript',
-      'tsx': 'typescript',
-      'py': 'python',
-      'rs': 'rust',
-      'go': 'go',
-      'java': 'java',
-      'c': 'c',
-      'cpp': 'cpp',
-      'h': 'c',
-      'hpp': 'cpp',
-      'cs': 'csharp',
-      'php': 'php',
-      'rb': 'ruby',
-      'sh': 'shell',
-      'bash': 'shell',
-      'json': 'json',
-      'xml': 'xml',
-      'html': 'html',
-      'css': 'css',
-      'scss': 'scss',
-      'md': 'markdown',
-      'yaml': 'yaml',
-      'yml': 'yaml',
-      'toml': 'toml',
-      'sql': 'sql',
-      'txt': 'plaintext',
+      'js': 'javascript', 'jsx': 'javascript', 'ts': 'typescript', 'tsx': 'typescript',
+      'py': 'python', 'rs': 'rust', 'go': 'go', 'java': 'java', 'c': 'c', 'cpp': 'cpp',
+      'h': 'c', 'hpp': 'cpp', 'cs': 'csharp', 'php': 'php', 'rb': 'ruby',
+      'sh': 'shell', 'bash': 'shell', 'json': 'json', 'xml': 'xml', 'html': 'html',
+      'css': 'css', 'scss': 'scss', 'md': 'markdown', 'yaml': 'yaml', 'yml': 'yaml',
+      'toml': 'toml', 'sql': 'sql', 'txt': 'plaintext',
     };
     return languageMap[ext || ''] || 'plaintext';
   };
 
-  // 1. 获取编辑锁
+  // 初始化：解密文档内容 + 建立 WebSocket 协同连接
   useEffect(() => {
-    async function acquireLock() {
-      try {
-        const response = await apiService.acquireLock(documentId);
-        const data = response.data.data;
+    if (!privateKey || !encryptedKey) return;
 
-        if (data.locked) {
-          setLockId(data.lock_id!);
-          setVersion(data.version!);
-          setIsHeartbeatActive(true);
-        } else {
-          setLockError(`文档正在被 ${data.locked_by} 编辑（${data.locked_at}）`);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('Failed to acquire lock:', err);
-
-        // 处理 409 锁冲突 - 提取锁持有者信息
-        if (isAxiosError(err) && err.response?.status === 409) {
-          const data = (err.response.data as { data?: { locked_by?: string } } | undefined)?.data;
-          if (data?.locked_by) {
-            setLockError(`文档正在被 ${data.locked_by} 编辑`);
-          } else {
-            setLockError('文档正在被其他用户编辑');
-          }
-        } else {
-          const message = isAxiosError(err)
-            ? ((err.response?.data as { error?: { message?: string } } | undefined)?.error?.message || err.message)
-            : err instanceof Error
-              ? err.message
-              : '未知错误';
-          setLockError('获取编辑锁失败：' + message);
-        }
-        setLoading(false);
-      }
-    }
-
-    acquireLock();
-  }, [documentId]);
-
-  // 2. 心跳续期（每10秒）
-  useEffect(() => {
-    if (!isHeartbeatActive || !lockId) return;
-
-    const interval = setInterval(async () => {
-      try {
-        await apiService.extendLock(documentId, lockId);
-      } catch (err) {
-        console.error('Heartbeat failed:', err);
-        setLockError('连接丢失 - 您的更改可能无法保存');
-        setLockId(null);  // 清除锁ID，避免两条消息同时显示
-        setIsHeartbeatActive(false);
-      }
-    }, 10000); // 10 seconds
-
-    return () => clearInterval(interval);
-  }, [isHeartbeatActive, lockId, documentId]);
-
-  // 3. 卸载时释放锁
-  useEffect(() => {
-    return () => {
-      if (lockId) {
-        apiService.releaseLock(documentId, lockId).catch(console.error);
-      }
-    };
-  }, [lockId, documentId]);
-
-  // 4. 加载文档内容（仅在获取锁后）
-  useEffect(() => {
-    if (!lockId) return; // 等待获取编辑锁
-
-    async function loadContent() {
+    async function initCollaboration() {
       try {
         setLoading(true);
         setError(null);
 
-        // 验证必需参数
-        if (!privateKey) {
-          throw new Error('私钥未找到，请重新登录');
-        }
-
-        if (!encryptedKey) {
-          throw new Error('文档密钥未找到');
-        }
-
-        // 1. 下载加密文件
-        const response = await apiService.downloadDocument(documentId);
-        const encryptedData = response.data;
-
-        // 2. 解密文件
         const crypto = new CryptoService();
+
+        // 1. 用私钥解密 DEK
+        const encryptedKeyBuffer = crypto.base64ToArrayBuffer(encryptedKey);
+        const dekRaw = await window.crypto.subtle.decrypt(
+          { name: 'RSA-OAEP' },
+          privateKey!,
+          encryptedKeyBuffer
+        );
+
+        // 2. 下载并解密文件初始内容
+        const response = await apiService.downloadDocument(documentId);
         const decrypted = await crypto.decryptDocument(
-          encryptedData,
+          response.data,
           encryptedName,
           nameNonce,
           contentNonce,
           encryptedKey,
-          privateKey
+          privateKey!
         );
+        const initialText = new TextDecoder('utf-8').decode(decrypted.content);
 
-        // 3. 将二进制内容转为文本
-        const textContent = new TextDecoder('utf-8').decode(decrypted.content);
-        setContent(textContent);
-        setOriginalContent(textContent);
+        // 3. 创建空 Y.Doc（内容由 Provider 根据房间状态决定何时填入）
+        const ydoc = new Y.Doc();
+        ydocRef.current = ydoc;
+
+        // 4. 获取访问令牌
+        const accessToken = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken') || '';
+
+        // 5. 初始化加密 WS Provider，传入初始内容由 Provider 管理
+        const provider = new EncryptedYjsWsProvider(ydoc, {
+          documentId,
+          accessToken,
+          dekRaw,
+          initialContent: initialText,
+          onUsersChange: setOnlineUsers,
+          onConnectionChange: setWsConnected,
+        });
+        providerRef.current = provider;
+
+        // 6. 设置当前用户感知信息（用于协作光标）
+        provider.setLocalAwareness({
+          name: user?.email || 'Unknown',
+          color: generateUserColor(user?.id || ''),
+        });
+
+        // 7. 文件下载/解密完成，立即显示编辑器（不等待 WS 同步完成）
+        //    内容会在 Provider 就绪后通过 MonacoBinding 自动填入
         setLoading(false);
       } catch (err) {
-        console.error('Failed to load document:', err);
+        console.error('Failed to initialize collaboration:', err);
         setError('加载文档失败：' + (err instanceof Error ? err.message : '未知错误'));
         setLoading(false);
       }
     }
 
-    loadContent();
-  }, [lockId, documentId, encryptedKey, encryptedName, nameNonce, contentNonce, privateKey]);
+    initCollaboration();
 
-  // 检测内容变化
+    return () => {
+      bindingRef.current?.destroy();
+      bindingRef.current = null;
+      providerRef.current?.destroy();
+      providerRef.current = null;
+      ydocRef.current?.destroy();
+      ydocRef.current = null;
+    };
+  }, [privateKey, encryptedKey, documentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 动态注入远程光标颜色和用户名标签的 CSS
   useEffect(() => {
-    setHasChanges(content !== originalContent);
-  }, [content, originalContent]);
+    const awareness = providerRef.current?.getAwareness();
+    if (!awareness) return;
 
-  // 保存文档
+    const styleId = 'yjs-cursor-styles';
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    const updateStyles = () => {
+      const rules: string[] = [];
+      awareness.getStates().forEach((state, clientID) => {
+        if (clientID === providerRef.current?.getAwareness().doc.clientID) return;
+        const u = state.user as { name?: string; color?: string } | undefined;
+        if (!u?.color) return;
+        const color = u.color;
+        const name = u.name || '';
+        // 选区背景色（半透明）
+        rules.push(`.yRemoteSelection-${clientID} { background-color: ${color}40; }`);
+        // 光标竖线颜色
+        rules.push(`.yRemoteSelectionHead-${clientID} { border-left: 2px solid ${color}; }`);
+        // 光标顶端用户名标签
+        rules.push(`.yRemoteSelectionHead-${clientID}::after { content: "${name}"; background-color: ${color}; color: #fff; font-size: 11px; font-weight: 600; padding: 1px 4px; border-radius: 3px 3px 3px 0; position: absolute; top: -1.4em; left: -1px; white-space: nowrap; pointer-events: none; z-index: 10; }`);
+      });
+      if (styleEl) {
+        styleEl.textContent = rules.join('\n');
+      }
+    };
+
+    awareness.on('change', updateStyles);
+    updateStyles();
+
+    return () => {
+      awareness.off('change', updateStyles);
+      const el = document.getElementById(styleId);
+      if (el) el.remove();
+    };
+  }, [wsConnected]); // 当连接状态变化时重新绑定
+
+  // Monaco 编辑器挂载回调
+  const handleEditorDidMount: OnMount = (editor) => {
+    editorRef.current = editor;
+    if (ydocRef.current && providerRef.current) {
+      _bindMonaco(editor, ydocRef.current, providerRef.current);
+    }
+    if (!canWrite) {
+      editor.updateOptions({ readOnly: true });
+    }
+  };
+
+  function _bindMonaco(
+    editor: Parameters<OnMount>[0],
+    ydoc: Y.Doc,
+    provider: EncryptedYjsWsProvider
+  ) {
+    if (bindingRef.current) return; // 已绑定
+    const yText = ydoc.getText('content');
+    const model = editor.getModel();
+    if (!model) return;
+
+    // 关键：先将 model 内容设为 yText 当前值
+    // MonacoBinding 构造函数内部会调用 model.setValue(ytext.toString())
+    // 如果 model 内容已经匹配，Monaco 不会触发 onDidChangeContent
+    // 从而避免内容被回写到 yText 导致重复
+    model.setValue(yText.toString());
+
+    bindingRef.current = new MonacoBinding(
+      yText,
+      model,
+      new Set([editor]),
+      provider.getAwareness()
+    );
+  }
+
+  // 保存文档（从 yText 获取当前内容，加密后上传）
   const handleSave = async () => {
-    // 验证锁状态
-    if (!lockId) {
-      setError('无编辑锁 - 无法保存');
-      return;
-    }
-
-    if (!hasChanges) {
-      setError('内容未修改');
-      return;
-    }
+    if (!canWrite) return;
+    const ydoc = ydocRef.current;
+    if (!ydoc || !privateKey) return;
 
     setSaving(true);
     setError(null);
 
     try {
       const crypto = new CryptoService();
+      const yText = ydoc.getText('content');
+      const currentText = yText.toString();
 
-      if (!privateKey) {
-        throw new Error('私钥未找到，请重新登录');
-      }
-
-      // 1. 用私钥解密 文档密钥
+      // 1. 用私钥解密 DEK
       const encryptedKeyBuffer = crypto.base64ToArrayBuffer(encryptedKey);
-      const documentKeyBuffer = await window.crypto.subtle.decrypt(
+      const dekRaw = await window.crypto.subtle.decrypt(
         { name: 'RSA-OAEP' },
         privateKey,
         encryptedKeyBuffer
       );
 
-      // 2. 导入 文档密钥 为 AES 密钥
+      // 2. 导入 DEK 为 AES 加密密钥
       const documentKey = await window.crypto.subtle.importKey(
         'raw',
-        documentKeyBuffer,
+        dekRaw,
         'AES-GCM',
         false,
         ['encrypt']
       );
 
-      // 3. 将文本转为二进制
-      const contentBuffer = new TextEncoder().encode(content);
-
-      // 4. 加密文件内容（生成新的 nonce）
+      // 3. 加密文件内容（新 nonce）
+      const contentBuffer = new TextEncoder().encode(currentText);
       const newContentNonce = window.crypto.getRandomValues(new Uint8Array(12));
       const encryptedContent = await window.crypto.subtle.encrypt(
-        {
-          name: 'AES-GCM',
-          iv: newContentNonce,
-        },
+        { name: 'AES-GCM', iv: newContentNonce },
         documentKey,
         contentBuffer
       );
 
-      // 5. 上传加密文件到 MinIO
+      // 4. 上传加密文件
       const blob = new Blob([encryptedContent]);
       const uploadResponse = await apiService.uploadFile(blob, 'encrypted');
       const newStoragePath = uploadResponse.data.data.storage_path;
 
-      // 6. 更新文档元数据（包含锁和版本信息）
+      // 5. 更新文档元数据（协同模式，不传 lock_id 和 expected_version）
       await apiService.updateDocument(documentId, {
         content_nonce: crypto.arrayBufferToBase64(newContentNonce.buffer as ArrayBuffer),
         storage_path: newStoragePath,
         size: blob.size,
-        expected_version: version,
-        lock_id: lockId,
       });
 
-      // 7. 成功
       onSuccess();
       onClose();
     } catch (err) {
       console.error('Failed to save document:', err);
-
-      // 处理冲突
-      if (isAxiosError(err) && err.response?.status === 409) {
-        const msg = (err.response.data as { error?: { message?: string } } | undefined)?.error?.message || '文档已被他人修改';
-        setError(`保存冲突：${msg}。请刷新后重试。`);
-      } else {
-        const message = isAxiosError(err)
-          ? ((err.response?.data as { error?: { message?: string } } | undefined)?.error?.message || err.message)
-          : err instanceof Error
-            ? err.message
-            : '未知错误';
-        setError(
-          '保存失败：' + message
-        );
-      }
+      const message = isAxiosError(err)
+        ? ((err.response?.data as { error?: { message?: string } } | undefined)?.error?.message || err.message)
+        : err instanceof Error
+          ? err.message
+          : '未知错误';
+      setError('保存失败：' + message);
       setSaving(false);
     }
   };
@@ -316,26 +302,48 @@ export function DocumentEditorModal({
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* 编辑锁状态指示器 */}
-            {lockId && (
-              <div className="flex items-center space-x-1.5 text-green-600 text-xs font-medium">
-                <Lock className="w-4 h-4" />
-                <span>已获取编辑锁</span>
+            {/* WS 连接状态 */}
+            <div className="flex items-center space-x-1.5">
+              {wsConnected ? (
+                <>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-xs text-green-600 font-medium">实时协同</span>
+                  <Wifi className="w-4 h-4 text-green-500" />
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 bg-orange-400 rounded-full" />
+                  <span className="text-xs text-orange-500 font-medium">连接中</span>
+                  <WifiOff className="w-4 h-4 text-orange-400" />
+                </>
+              )}
+            </div>
+
+            {/* 在线协作者头像列表 */}
+            {onlineUsers.length > 0 && (
+              <div className="flex items-center -space-x-1">
+                {onlineUsers.slice(0, 5).map((u) => (
+                  <div
+                    key={u.userId}
+                    title={`${u.userEmail} (${u.permissionLevel})`}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs text-white font-bold border-2 border-white"
+                    style={{ backgroundColor: generateUserColor(u.userId) }}
+                  >
+                    {u.userEmail.charAt(0).toUpperCase()}
+                  </div>
+                ))}
+                {onlineUsers.length > 5 && (
+                  <div className="w-7 h-7 rounded-full bg-slate-400 flex items-center justify-center text-xs text-white font-bold border-2 border-white">
+                    +{onlineUsers.length - 5}
+                  </div>
+                )}
               </div>
             )}
 
-            {lockError && (
-              <div className="flex items-center space-x-1.5 text-red-600 text-xs font-medium">
-                <AlertCircle className="w-4 h-4" />
-                <span>{lockError}</span>
-              </div>
+            {!canWrite && (
+              <span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full">只读</span>
             )}
 
-            {hasChanges && (
-              <span className="text-xs text-amber-600 font-medium">
-                • 未保存
-              </span>
-            )}
             <button
               onClick={onClose}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -363,15 +371,15 @@ export function DocumentEditorModal({
             <Editor
               height="100%"
               language={getLanguage(fileName)}
-              value={content}
-              onChange={(value) => setContent(value || '')}
               theme="vs-light"
+              onMount={handleEditorDidMount}
               options={{
                 fontSize: 14,
                 minimap: { enabled: true },
                 scrollBeyondLastLine: false,
                 wordWrap: 'on',
                 automaticLayout: true,
+                readOnly: !canWrite,
               }}
             />
           )}
@@ -384,25 +392,27 @@ export function DocumentEditorModal({
             disabled={saving}
             className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
           >
-            取消
+            {canWrite ? '取消' : '关闭'}
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !hasChanges || loading}
-            className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>保存中...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>保存</span>
-              </>
-            )}
-          </button>
+          {canWrite && (
+            <button
+              onClick={handleSave}
+              disabled={saving || loading}
+              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>保存中...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>保存</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

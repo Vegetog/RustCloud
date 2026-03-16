@@ -28,6 +28,8 @@ thiserror = { workspace = true }
 validator = { workspace = true }
 redis = { workspace = true }
 async-trait = "0.1"
+dashmap = { workspace = true }
+futures-util = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

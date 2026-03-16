@@ -10,6 +10,7 @@ use rustcloud_database::{create_connection, DatabaseConfig, DatabaseConnection};
 use rustcloud_storage::{LocalStorage, LocalStorageConfig, MinioStorage, MinioStorageConfig, Storage};
 
 use crate::error::ApiError;
+use crate::services::ws_room::{WsRooms, new_ws_rooms};
 
 /// 最大文件上传大小（100MB）
 pub const MAX_FILE_SIZE: usize = 100 * 1024 * 1024;
@@ -27,6 +28,8 @@ pub struct AppState {
     pub jwt_manager: Arc<JwtManager>,
     /// 应用配置
     pub config: Arc<AppConfig>,
+    /// WebSocket 协作房间管理
+    pub ws_rooms: WsRooms,
 }
 
 impl AppState {
@@ -102,6 +105,7 @@ impl AppState {
             storage,
             jwt_manager,
             config: Arc::new(config),
+            ws_rooms: new_ws_rooms(),
         })
     }
 

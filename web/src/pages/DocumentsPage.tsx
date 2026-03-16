@@ -621,6 +621,7 @@ export function DocumentsPage() {
           encryptedName={editingDocument.encrypted_name}
           nameNonce={editingDocument.name_nonce}
           contentNonce={editingDocument.content_nonce}
+          permissionLevel={editingDocument.permission_level as 'owner' | 'write' | 'read'}
           onClose={() => setEditingDocument(null)}
           onSuccess={() => {
             loadDocuments();

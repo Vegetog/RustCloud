@@ -99,10 +99,15 @@ pub fn create_router(state: AppState) -> Router {
     // 健康检查路由
     let health_route = Router::new().route("/health", get(health_check));
 
+    // WebSocket 协同编辑路由（认证在 handler 内部完成，不走 auth_middleware）
+    let ws_routes = Router::new()
+        .route("/documents/:id/ws", get(handlers::document_ws::document_ws_handler));
+
     // 合并所有路由到 /api/v1 路径下
     let api_routes = Router::new()
         .merge(public_routes)
         .merge(protected_routes)
+        .merge(ws_routes)
         .merge(health_route);
 
     // 构建带中间件的最终路由器

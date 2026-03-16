@@ -112,10 +112,9 @@ pub struct UpdateDocumentRequest {
     pub storage_path: Option<String>,
     pub size: Option<i64>,
 
-    /// 用于乐观锁的预期版本号
-    pub expected_version: i64,
+    /// 用于乐观锁的预期版本号（协同编辑模式下可省略）
+    pub expected_version: Option<i64>,
 
-    /// 用于校验锁归属的锁 ID
-    #[validate(length(min = 1, message = "Lock ID is required"))]
-    pub lock_id: String,
+    /// 用于校验锁归属的锁 ID（协同编辑模式下可省略）
+    pub lock_id: Option<String>,
 }

@@ -99,3 +99,15 @@ a {
   font-weight: 600;
   background-color: #f1f5f9;
 }
+
+/* ===== Yjs / y-monaco 协同光标基础样式 ===== */
+/* 具体颜色和用户名标签通过 JS 动态注入（per-clientID） */
+
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid orange;
+  border-top: none;
+  border-bottom: none;
+  border-right: none;
+  height: 100%;
+}

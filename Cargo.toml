@@ -21,7 +21,7 @@ license = "MIT"
 tokio = { version = "1", features = ["full"] }
 
 # Web 框架
-axum = { version = "0.7", features = ["macros", "multipart"] }
+axum = { version = "0.7", features = ["macros", "multipart", "ws"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "compression-gzip", "limit"] }
 
 # 序列化
@@ -46,6 +46,12 @@ rand = "0.8"
 
 # JWT
 jsonwebtoken = "9"
+
+# 并发数据结构
+dashmap = "6"
+
+# 异步工具
+futures-util = "0.3"
 
 # 工具
 uuid = { version = "1", features = ["v4", "serde"] }
