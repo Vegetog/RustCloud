@@ -6,6 +6,12 @@ IMAGE_OWNER_DEFAULT="${REPO%%/*}"
 INSTALL_DIR="${RUSTCLOUD_DIR:-$HOME/rustcloud}"
 VERSION="${1:-latest}"
 
+if [[ "$VERSION" == "latest" ]]; then
+  REF="main"
+else
+  REF="$VERSION"
+fi
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "[ERROR] Docker is not installed."
   exit 1
@@ -19,8 +25,8 @@ fi
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
-COMPOSE_URL="https://raw.githubusercontent.com/${REPO}/main/docker-compose.prod.yml"
-ENV_URL="https://raw.githubusercontent.com/${REPO}/main/.env.prod.example"
+COMPOSE_URL="https://raw.githubusercontent.com/${REPO}/${REF}/docker-compose.prod.yml"
+ENV_URL="https://raw.githubusercontent.com/${REPO}/${REF}/.env.prod.example"
 
 echo "[INFO] Downloading deployment files from ${REPO} ..."
 curl -fsSL "$COMPOSE_URL" -o docker-compose.yml
