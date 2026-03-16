@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="${RUSTCLOUD_REPO:-songhaojie/RustCloud}"
+REPO="${RUSTCLOUD_REPO:-Vegetog/RustCloud}"
 IMAGE_OWNER_DEFAULT="${REPO%%/*}"
 INSTALL_DIR="${RUSTCLOUD_DIR:-$HOME/rustcloud}"
 VERSION="${1:-latest}"

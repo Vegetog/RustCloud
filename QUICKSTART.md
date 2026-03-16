@@ -29,9 +29,9 @@ git push origin v1.0.0
 普通用户一行部署（默认 latest，也可传版本号）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/songhaojie/RustCloud/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash
 # 或指定版本
-curl -fsSL https://raw.githubusercontent.com/songhaojie/RustCloud/main/install.sh | bash -s -- v1.0.0
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash -s -- v1.0.0
 ```
 
 部署目录默认在 `$HOME/rustcloud`，首次会自动生成 `.env.prod`。
