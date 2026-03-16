@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO="${RUSTCLOUD_REPO:-Vegetog/RustCloud}"
-IMAGE_OWNER_DEFAULT="${REPO%%/*}"
+IMAGE_OWNER_DEFAULT="$(printf '%s' "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')"
 INSTALL_DIR="${RUSTCLOUD_DIR:-$HOME/rustcloud}"
 VERSION="${1:-latest}"
 GITHUB_TOKEN_VALUE="${RUSTCLOUD_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
@@ -62,7 +62,12 @@ else
   printf "\nIMAGE_TAG=%s\n" "$VERSION" >> .env.prod
 fi
 
-if ! grep -q '^IMAGE_OWNER=' .env.prod; then
+if grep -q '^IMAGE_OWNER=' .env.prod; then
+  CURRENT_IMAGE_OWNER="$(grep '^IMAGE_OWNER=' .env.prod | tail -n 1 | cut -d= -f2-)"
+  NORMALIZED_IMAGE_OWNER="$(printf '%s' "$CURRENT_IMAGE_OWNER" | tr '[:upper:]' '[:lower:]')"
+  sed "s/^IMAGE_OWNER=.*/IMAGE_OWNER=${NORMALIZED_IMAGE_OWNER}/" .env.prod > .env.prod.tmp
+  mv .env.prod.tmp .env.prod
+else
   printf "IMAGE_OWNER=%s\n" "$IMAGE_OWNER_DEFAULT" >> .env.prod
 fi
 
