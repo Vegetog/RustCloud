@@ -57,7 +57,6 @@ export function DocumentsPage() {
   const { user, logout } = useAuthStore();
   const {
     documents,
-    total,
     loading,
     error,
     uploadProgress,
