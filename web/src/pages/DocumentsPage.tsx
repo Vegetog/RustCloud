@@ -30,12 +30,14 @@ import {
   Users,
   User,
   Inbox,
+  Sparkles,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { ShareModal } from '../components/ShareModal';
 import { PreviewModal } from '../components/PreviewModal';
 import { DocumentEditorModal } from '../components/DocumentEditorModal';
+import { AISettingsModal } from '../components/AISettingsModal';
 import { apiService } from '../services/api';
 import { CryptoService } from '../services/crypto';
 import type { Document } from '../types/document';
@@ -71,6 +73,7 @@ export function DocumentsPage() {
   const [view, setView] = useState<ViewMode>('all');
   // 分享弹窗状态
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [shareDocumentId, setShareDocumentId] = useState<string | null>(null);
   const [shareEncryptedKey, setShareEncryptedKey] = useState<string | null>(null);
 
@@ -313,6 +316,13 @@ export function DocumentsPage() {
           >
             <Users className="w-5 h-5" />
             <span className="font-medium text-sm">身份管理</span>
+          </button>
+          <button
+            onClick={() => setAiSettingsOpen(true)}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all text-slate-400 hover:text-white hover:bg-slate-800"
+          >
+            <Sparkles className="w-5 h-5" />
+            <span className="font-medium text-sm">AI 设置</span>
           </button>
         </nav>
 
@@ -628,6 +638,9 @@ export function DocumentsPage() {
           }}
         />
       )}
+
+      {/* AI 设置弹窗 */}
+      <AISettingsModal isOpen={aiSettingsOpen} onClose={() => setAiSettingsOpen(false)} />
     </div>
   );
 }

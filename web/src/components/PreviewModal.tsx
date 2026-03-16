@@ -1,7 +1,7 @@
 // 预览弹窗：零知识加密的客户端文档预览
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Loader2, Code2, FileText, Sparkles, KeyRound, AlertCircle } from 'lucide-react';
+import { X, Loader2, Code2, FileText, Sparkles, AlertCircle, Settings } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
@@ -11,7 +11,8 @@ import * as XLSX from 'xlsx';
 import { apiService } from '../services/api';
 import { cryptoService } from '../services/crypto';
 import { useAuthStore } from '../stores/authStore';
-import { summarizeDocument, getGeminiKey, saveGeminiKey, clearGeminiKey } from '../services/gemini';
+import { summarizeDocument } from '../services/gemini';
+import { getAIConfig, getProviderInfo } from '../services/aiProvider';
 
 interface PreviewModalProps {
   documentId: string;
@@ -60,8 +61,7 @@ export function PreviewModal({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [needApiKey, setNeedApiKey] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [noConfig, setNoConfig] = useState(false);
 
   const CODE_EXTENSIONS = [
     'js', 'jsx', 'ts', 'tsx',
@@ -285,13 +285,14 @@ export function PreviewModal({
   // --- AI 总结 ---
   const canSummarize = !loading && !error && textContent !== null;
 
-  const doSummarize = async (key: string) => {
-    if (!textContent) return;
+  const doSummarize = async () => {
+    const config = getAIConfig();
+    if (!config || !textContent) return;
     setAiLoading(true);
     setAiError(null);
     setAiSummary(null);
     try {
-      const result = await summarizeDocument(key, textContent, decryptedFileName);
+      const result = await summarizeDocument(config, textContent, decryptedFileName);
       setAiSummary(result);
     } catch (err) {
       setAiError(err instanceof Error ? err.message : 'AI 请求失败');
@@ -301,30 +302,20 @@ export function PreviewModal({
   };
 
   const handleAiClick = () => {
-    if (aiLoading) return;  // 防止加载中重复触发
-    // 已有总结时切换面板显示/隐藏
+    if (aiLoading) return;
     if (aiSummary && !aiError) {
       setShowAiPanel((prev) => !prev);
       return;
     }
     setShowAiPanel(true);
     setAiError(null);
-    const key = getGeminiKey();
-    if (!key) {
-      setNeedApiKey(true);
+    const config = getAIConfig();
+    if (!config) {
+      setNoConfig(true);
       return;
     }
-    setNeedApiKey(false);
-    doSummarize(key);
-  };
-
-  const handleApiKeyConfirm = () => {
-    const key = apiKeyInput.trim();
-    if (!key) return;
-    saveGeminiKey(key);
-    setNeedApiKey(false);
-    setApiKeyInput('');
-    doSummarize(key);
+    setNoConfig(false);
+    doSummarize();
   };
 
   const renderPreview = () => {
@@ -707,7 +698,9 @@ export function PreviewModal({
               <div className="flex items-center space-x-2">
                 <Sparkles className="w-4 h-4 text-purple-500" />
                 <span className="text-sm font-semibold text-purple-700">AI 总结</span>
-                <span className="text-xs text-slate-400">内容发送至火山引擎 DeepSeek，不经过 RustCloud 服务器</span>
+                <span className="text-xs text-slate-400">
+                  {(() => { const c = getAIConfig(); return c ? getProviderInfo(c.provider).description : '内容发送至 AI 服务，不经过 RustCloud 服务器'; })()}
+                </span>
               </div>
               <button
                 onClick={() => setShowAiPanel(false)}
@@ -718,33 +711,12 @@ export function PreviewModal({
             </div>
 
             {/* 面板内容 */}
-            {needApiKey ? (
+            {noConfig ? (
               <div className="flex items-center space-x-2 p-4">
-                <KeyRound className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleApiKeyConfirm()}
-                  placeholder="输入您的火山引擎 API Key（仅存储于本地浏览器）"
-                  className="flex-1 text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
-                  autoFocus
-                />
-                <button
-                  onClick={handleApiKeyConfirm}
-                  disabled={!apiKeyInput.trim()}
-                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
-                >
-                  确认
-                </button>
-                <a
-                  href="https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-500 hover:underline whitespace-nowrap"
-                >
-                  获取 Key ↗
-                </a>
+                <Settings className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <span className="text-sm text-slate-500">
+                  请先在侧边栏「AI 设置」中配置 API Key
+                </span>
               </div>
             ) : aiLoading ? (
               <div className="flex items-center justify-center space-x-2 py-6">
@@ -758,17 +730,14 @@ export function PreviewModal({
                   <p className="text-red-600 mb-1.5">{aiError}</p>
                   <div className="flex items-center space-x-3 text-xs">
                     <button
-                      onClick={() => { setAiError(null); const k = getGeminiKey(); if (k) doSummarize(k); else setNeedApiKey(true); }}
+                      onClick={() => { setAiError(null); const c = getAIConfig(); if (c) doSummarize(); else setNoConfig(true); }}
                       className="text-purple-600 hover:underline"
                     >
                       重试
                     </button>
-                    <button
-                      onClick={() => { clearGeminiKey(); setAiError(null); setNeedApiKey(true); setApiKeyInput(''); }}
-                      className="text-slate-500 hover:underline"
-                    >
-                      更改 API Key
-                    </button>
+                    <span className="text-slate-400">
+                      如需更改配置，请前往侧边栏「AI 设置」
+                    </span>
                   </div>
                 </div>
               </div>
