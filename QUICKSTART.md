@@ -17,6 +17,26 @@ docker-compose up -d
 - API: `http://localhost:8080/api/v1`
 - MinIO Console: `http://localhost:9001`
 
+## 2.1 发布后的一行部署（给其他人使用）
+
+维护者先发布镜像（打 tag 会自动触发）：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+普通用户一行部署（默认 latest，也可传版本号）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/songhaojie/RustCloud/main/install.sh | bash
+# 或指定版本
+curl -fsSL https://raw.githubusercontent.com/songhaojie/RustCloud/main/install.sh | bash -s -- v1.0.0
+```
+
+部署目录默认在 `$HOME/rustcloud`，首次会自动生成 `.env.prod`。
+正式环境请务必替换其中所有 `CHANGE_ME` 配置。
+
 ## 3. 本地验证
 
 ```bash
