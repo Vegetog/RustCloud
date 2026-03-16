@@ -5,6 +5,7 @@ REPO="${RUSTCLOUD_REPO:-songhaojie/RustCloud}"
 IMAGE_OWNER_DEFAULT="${REPO%%/*}"
 INSTALL_DIR="${RUSTCLOUD_DIR:-$HOME/rustcloud}"
 VERSION="${1:-latest}"
+GITHUB_TOKEN_VALUE="${RUSTCLOUD_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
 
 if [[ "$VERSION" == "latest" ]]; then
   REF="main"
@@ -25,14 +26,32 @@ fi
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
-COMPOSE_URL="https://raw.githubusercontent.com/${REPO}/${REF}/docker-compose.prod.yml"
-ENV_URL="https://raw.githubusercontent.com/${REPO}/${REF}/.env.prod.example"
+download_from_repo() {
+  local repo_path="$1"
+  local output_file="$2"
+
+  if [[ -n "$GITHUB_TOKEN_VALUE" ]]; then
+    local api_url="https://api.github.com/repos/${REPO}/contents/${repo_path}?ref=${REF}"
+    curl -fsSL \
+      -H "Authorization: Bearer ${GITHUB_TOKEN_VALUE}" \
+      -H "Accept: application/vnd.github.raw" \
+      "$api_url" \
+      -o "$output_file"
+  else
+    local raw_url="https://raw.githubusercontent.com/${REPO}/${REF}/${repo_path}"
+    if ! curl -fsSL "$raw_url" -o "$output_file"; then
+      echo "[ERROR] Failed to download ${repo_path} from ${raw_url}."
+      echo "[HINT] If the repository is private, set GITHUB_TOKEN or RUSTCLOUD_GITHUB_TOKEN before running this script."
+      exit 1
+    fi
+  fi
+}
 
 echo "[INFO] Downloading deployment files from ${REPO} ..."
-curl -fsSL "$COMPOSE_URL" -o docker-compose.yml
+download_from_repo "docker-compose.prod.yml" "docker-compose.yml"
 
 if [[ ! -f .env.prod ]]; then
-  curl -fsSL "$ENV_URL" -o .env.prod
+  download_from_repo ".env.prod.example" ".env.prod"
   echo "[INFO] Created .env.prod from template."
 fi
 
