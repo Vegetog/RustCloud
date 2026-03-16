@@ -28,6 +28,8 @@ import {
   Eye,
   Info,
   Users,
+  User,
+  Inbox,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
@@ -39,6 +41,14 @@ import { CryptoService } from '../services/crypto';
 import type { Document } from '../types/document';
 
 type DocumentWithEncryptedKey = Document & { encrypted_key: string };
+
+type ViewMode = 'all' | 'mine' | 'shared';
+
+const VIEW_NAMES: Record<ViewMode, string> = {
+  all: '全部文件',
+  mine: '我的文件',
+  shared: '分享给我的',
+};
 
 export function DocumentsPage() {
   const navigate = useNavigate();
@@ -58,6 +68,7 @@ export function DocumentsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [view, setView] = useState<ViewMode>('all');
   // 分享弹窗状态
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareDocumentId, setShareDocumentId] = useState<string | null>(null);
@@ -253,6 +264,8 @@ export function DocumentsPage() {
   };
 
   const filteredDocuments = documents.filter((doc) => {
+    if (view === 'mine' && doc.permission_level !== 'owner') return false;
+    if (view === 'shared' && doc.permission_level === 'owner') return false;
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return doc.decrypted_name?.toLowerCase().includes(query);
@@ -275,12 +288,25 @@ export function DocumentsPage() {
 
         {/* 导航 */}
         <nav className="flex-1 px-4 space-y-1 mt-4">
-          <button
-            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all bg-blue-600 text-white shadow-md shadow-blue-900/20"
-          >
-            <Home className="w-5 h-5 text-white" />
-            <span className="font-medium text-sm">全部文件</span>
-          </button>
+          {(['all', 'mine', 'shared'] as ViewMode[]).map((v) => {
+            const Icon = v === 'all' ? Home : v === 'mine' ? User : Inbox;
+            const isActive = view === v;
+            return (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium text-sm">{VIEW_NAMES[v]}</span>
+              </button>
+            );
+          })}
+          <div className="my-2 border-t border-slate-800" />
           <button
             onClick={() => navigate('/identities')}
             className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all text-slate-400 hover:text-white hover:bg-slate-800"
@@ -318,9 +344,9 @@ export function DocumentsPage() {
         {/* 顶部栏 */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
           <div className="flex items-center text-sm font-medium text-slate-500">
-            <span className="text-slate-800">全部文件</span>
+            <span className="text-slate-800">{VIEW_NAMES[view]}</span>
             <span className="ml-2 text-slate-400">·</span>
-            <span className="ml-2">{total} 个文档</span>
+            <span className="ml-2">{filteredDocuments.length} 个文档</span>
           </div>
 
           {/* 搜索框 */}
@@ -410,24 +436,32 @@ export function DocumentsPage() {
           ) : filteredDocuments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <Folder className="w-10 h-10 text-slate-400" />
+                {view === 'shared'
+                  ? <Inbox className="w-10 h-10 text-slate-400" />
+                  : <Folder className="w-10 h-10 text-slate-400" />}
               </div>
               <h3 className="text-lg font-semibold text-slate-800 mb-2">
-                还没有文档
+                {view === 'shared' ? '暂无分享文件' : '还没有文档'}
               </h3>
               <p className="text-slate-500 text-sm mb-6">
-                点击上传按钮开始上传您的第一个加密文件
+                {view === 'shared'
+                  ? '当其他用户与您共享文件后，将在此处显示'
+                  : '点击上传按钮开始上传您的第一个加密文件'}
               </p>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/30 flex items-center space-x-2 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>上传文件</span>
-              </button>
-              <p className="text-slate-400 text-xs mt-4">
-                支持所有文件类型 · 单文件最大 100MB · 端到端加密
-              </p>
+              {view !== 'shared' && (
+                <>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/30 flex items-center space-x-2 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>上传文件</span>
+                  </button>
+                  <p className="text-slate-400 text-xs mt-4">
+                    支持所有文件类型 · 单文件最大 100MB · 端到端加密
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <>
