@@ -56,7 +56,19 @@ cd web && npm install && npm run build
 
 如需固定到某个 Release，可在命令末尾追加：`-s -- vX.Y.Z`。
 
-- Windows（PowerShell + Git Bash）
+- Windows PowerShell（原生推荐）
+
+```powershell
+irm https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.ps1 | iex
+```
+
+- Windows CMD（原生）
+
+```cmd
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.cmd -o install.cmd && install.cmd && del install.cmd
+```
+
+- Windows（Git Bash）
 
 ```powershell
 curl.exe -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash
@@ -90,6 +102,10 @@ wsl bash -lc "curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/mai
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash -s -- v1.0.7
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.ps1))) -Version v1.0.7"
 ```
 
 ## 常用命令
