@@ -50,6 +50,40 @@ cd web && npm install && npm run build
 - Web: `http://localhost:3000`
 - API: `http://localhost:8080/api/v1`
 
+## 一键部署（跨平台）
+
+说明：将 `v1.0.7` 替换为你要部署的 Release 版本。
+
+- Windows（PowerShell + Git Bash）
+
+```powershell
+curl.exe -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7
+```
+
+- macOS（Terminal / zsh）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7
+```
+
+- Linux（bash）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7
+```
+
+- WSL（在 Windows 的 WSL 终端中执行）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7
+```
+
+如果在 PowerShell 中没有 `bash`，可直接通过 WSL 执行：
+
+```powershell
+wsl bash -lc "curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7"
+```
+
 ## 常用命令
 
 ```bash
