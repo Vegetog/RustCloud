@@ -9,6 +9,8 @@ $repo = if ($env:RUSTCLOUD_REPO) { $env:RUSTCLOUD_REPO } else { "Vegetog/RustClo
 $installDir = if ($env:RUSTCLOUD_DIR) { $env:RUSTCLOUD_DIR } else { Join-Path $HOME "rustcloud" }
 $token = if ($env:RUSTCLOUD_GITHUB_TOKEN) { $env:RUSTCLOUD_GITHUB_TOKEN } else { $env:GITHUB_TOKEN }
 $ref = if ($Version -eq "latest") { "main" } else { $Version }
+$resetDataRaw = if ($env:RUSTCLOUD_RESET_DATA) { $env:RUSTCLOUD_RESET_DATA } else { "0" }
+$resetDataEnabled = @("1", "true", "yes", "y", "on") -contains $resetDataRaw.ToLowerInvariant()
 
 $ownerDefault = ($repo.Split('/')[0]).ToLowerInvariant()
 
@@ -87,6 +89,14 @@ else {
 }
 
 Set-Content -Path ".env.prod" -Value $envContent -NoNewline
+
+if ($resetDataEnabled) {
+  Write-Info "RUSTCLOUD_RESET_DATA is enabled. Recreating stack and volumes..."
+  docker compose --env-file .env.prod down -v --remove-orphans
+  if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+  }
+}
 
 Write-Info "Pulling images (tag: $Version) ..."
 docker compose --env-file .env.prod pull

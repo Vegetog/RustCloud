@@ -108,6 +108,16 @@ curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh |
 powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.ps1))) -Version v1.0.7"
 ```
 
+若历史数据卷导致数据库密码不匹配，可启用自动清理重装（会删除已有数据）：
+
+```bash
+RUSTCLOUD_RESET_DATA=1 curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash
+```
+
+```powershell
+$env:RUSTCLOUD_RESET_DATA="1"; irm https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.ps1 | iex
+```
+
 ## 常用命令
 
 ```bash

@@ -14,6 +14,14 @@ IMAGE_OWNER_DEFAULT="$(printf '%s' "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')"
 INSTALL_DIR="${RUSTCLOUD_DIR:-$HOME/rustcloud}"
 VERSION="${1:-latest}"
 GITHUB_TOKEN_VALUE="${RUSTCLOUD_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
+RESET_DATA_RAW="${RUSTCLOUD_RESET_DATA:-0}"
+
+RESET_DATA="false"
+case "${RESET_DATA_RAW,,}" in
+  1|true|yes|y|on)
+    RESET_DATA="true"
+    ;;
+esac
 
 if [[ "$VERSION" == "latest" ]]; then
   REF="main"
@@ -77,6 +85,11 @@ if grep -q '^IMAGE_OWNER=' .env.prod; then
   mv .env.prod.tmp .env.prod
 else
   printf "IMAGE_OWNER=%s\n" "$IMAGE_OWNER_DEFAULT" >> .env.prod
+fi
+
+if [[ "$RESET_DATA" == "true" ]]; then
+  echo "[INFO] RUSTCLOUD_RESET_DATA is enabled. Recreating stack and volumes..."
+  docker compose --env-file .env.prod down -v --remove-orphans
 fi
 
 echo "[INFO] Pulling images (tag: ${VERSION}) ..."
