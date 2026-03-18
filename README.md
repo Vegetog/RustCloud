@@ -52,36 +52,44 @@ cd web && npm install && npm run build
 
 ## 一键部署（跨平台）
 
-说明：将 `v1.0.7` 替换为你要部署的 Release 版本。
+默认拉取 `latest`（无需手动指定版本）。
+
+如需固定到某个 Release，可在命令末尾追加：`-s -- vX.Y.Z`。
 
 - Windows（PowerShell + Git Bash）
 
 ```powershell
-curl.exe -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7
+curl.exe -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash
 ```
 
 - macOS（Terminal / zsh）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash
 ```
 
 - Linux（bash）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash
 ```
 
 - WSL（在 Windows 的 WSL 终端中执行）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash
 ```
 
 如果在 PowerShell 中没有 `bash`，可直接通过 WSL 执行：
 
 ```powershell
-wsl bash -lc "curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/v1.0.7/install.sh | bash -s -- v1.0.7"
+wsl bash -lc "curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash"
+```
+
+固定版本示例（可选）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Vegetog/RustCloud/main/install.sh | bash -s -- v1.0.7
 ```
 
 ## 常用命令

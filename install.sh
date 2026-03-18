@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu
+if (set -o pipefail >/dev/null 2>&1); then
+  set -o pipefail
+fi
+
+if [ -z "${BASH_VERSION:-}" ]; then
+  echo "[ERROR] This installer must run with bash."
+  exit 1
+fi
 
 REPO="${RUSTCLOUD_REPO:-Vegetog/RustCloud}"
 IMAGE_OWNER_DEFAULT="$(printf '%s' "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')"
