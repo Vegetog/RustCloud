@@ -83,7 +83,16 @@ echo "[INFO] Pulling images (tag: ${VERSION}) ..."
 docker compose --env-file .env.prod pull
 
 echo "[INFO] Starting services ..."
-docker compose --env-file .env.prod up -d
+if ! docker compose --env-file .env.prod up -d; then
+  echo "[ERROR] Service startup failed. Recent logs:"
+  docker compose --env-file .env.prod logs migration --tail 80 || true
+  docker compose --env-file .env.prod logs postgres --tail 80 || true
+  echo "[HINT] If you changed POSTGRES_PASSWORD but reused an old postgres_data volume, credentials may mismatch."
+  echo "[HINT] For a clean reinstall (will delete existing data):"
+  echo "       docker compose --env-file .env.prod down -v"
+  echo "       docker compose --env-file .env.prod up -d"
+  exit 1
+fi
 
 echo "[DONE] RustCloud is running."
 echo "[INFO] Open: http://localhost:${PUBLIC_PORT:-80}"

@@ -97,7 +97,14 @@ if ($LASTEXITCODE -ne 0) {
 Write-Info "Starting services ..."
 docker compose --env-file .env.prod up -d
 if ($LASTEXITCODE -ne 0) {
-  exit $LASTEXITCODE
+  Write-Host "[ERROR] Service startup failed. Recent logs:"
+  docker compose --env-file .env.prod logs migration --tail 80
+  docker compose --env-file .env.prod logs postgres --tail 80
+  Write-Host "[HINT] If you changed POSTGRES_PASSWORD but reused an old postgres_data volume, credentials may mismatch."
+  Write-Host "[HINT] For a clean reinstall (will delete existing data):"
+  Write-Host "       docker compose --env-file .env.prod down -v"
+  Write-Host "       docker compose --env-file .env.prod up -d"
+  exit 1
 }
 
 $publicPort = if ($env:PUBLIC_PORT) { $env:PUBLIC_PORT } else { "80" }
