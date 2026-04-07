@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -33,6 +35,9 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -55,7 +60,9 @@ services:
       "
 
   migration:
-    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-songhaojie}/rustcloud-api:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     restart: "no"
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -65,7 +72,9 @@ services:
     command: ["./migrate"]
 
   api:
-    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-songhaojie}/rustcloud-api:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     restart: unless-stopped
     environment:
       SERVER_HOST: 0.0.0.0
@@ -95,7 +104,9 @@ services:
         condition: service_completed_successfully
 
   web:
-    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-songhaojie}/rustcloud-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.web
     restart: unless-stopped
     depends_on:
       - api
