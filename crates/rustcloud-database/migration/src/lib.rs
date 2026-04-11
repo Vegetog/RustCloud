@@ -8,6 +8,7 @@ mod m20240117_000001_add_content_nonce;
 mod m20240204_000001_add_document_version;
 mod m20260226_000001_drop_document_content_hash;
 mod m20260310_000001_create_identities_table;
+mod m20260410_000001_drop_document_lock_fields;
 
 pub struct Migrator;
 
@@ -23,6 +24,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240204_000001_add_document_version::Migration),
             Box::new(m20260226_000001_drop_document_content_hash::Migration),
             Box::new(m20260310_000001_create_identities_table::Migration),
+            Box::new(m20260410_000001_drop_document_lock_fields::Migration),
         ]
     }
 }

@@ -42,8 +42,6 @@ pub struct UpdateDocument {
     pub storage_path: Option<String>,
     pub size: Option<i64>,
     pub version: Option<i64>,
-    pub locked_by: Option<Option<Uuid>>,
-    pub locked_at: Option<Option<DateTime<Utc>>>,
 }
 
 // ========== 文档密钥 DTO ==========

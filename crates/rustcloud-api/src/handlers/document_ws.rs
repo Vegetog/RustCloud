@@ -70,12 +70,7 @@ pub async fn document_ws_handler(
         .map_err(|e| ApiError::internal(format!("Database error: {}", e)))?
         .ok_or_else(|| ApiError::forbidden("No access to this document"))?;
 
-    let permission_level = match doc_key.permission_level {
-        PermissionLevel::Owner => "owner",
-        PermissionLevel::Write => "write",
-        PermissionLevel::Read => "read",
-    }
-    .to_string();
+    let permission_level = doc_key.permission_level.to_string();
 
     let can_write = doc_key.permission_level != PermissionLevel::Read;
 

@@ -65,7 +65,7 @@ pub async fn list_documents(
             .map_err(ApiError::from)?;
 
         let (permission_level, encrypted_key) = match key {
-            Some(k) => (permission_to_string(k.permission_level), Some(k.encrypted_key)),
+            Some(k) => (k.permission_level.to_string(), Some(k.encrypted_key)),
             None => ("none".to_string(), None),
         };
 
@@ -79,8 +79,6 @@ pub async fn list_documents(
             permission_level,
             version: doc.version,
             encrypted_key,
-            locked_by: None, // 列表视图中不暴露锁信息
-            locked_at: None,
             created_at: doc.created_at,
             updated_at: doc.updated_at,
         });
@@ -207,8 +205,6 @@ pub async fn upload_document(
         permission_level: "owner".to_string(),
         version: doc.version,
         encrypted_key: None,
-        locked_by: None,
-        locked_at: None,
         created_at: doc.created_at,
         updated_at: doc.updated_at,
     }))
@@ -247,11 +243,9 @@ pub async fn get_document(
             content_nonce: doc.content_nonce,
             size: doc.size,
             mime_type: doc.mime_type,
-            permission_level: permission_to_string(key.permission_level),
+            permission_level: key.permission_level.to_string(),
             version: doc.version,
             encrypted_key: None,
-            locked_by: None, // 不暴露用户 ID，仅在获取锁时显示
-            locked_at: doc.locked_at,
             created_at: doc.created_at,
             updated_at: doc.updated_at,
         },
@@ -391,37 +385,14 @@ pub async fn update_document(
         return Err(ApiError::forbidden("Read-only users cannot edit document"));
     }
 
-    // 3. 验证锁的归属（协同编辑模式下 lock_id 为 None，跳过锁检查）
-    use crate::services::DocumentLockManager;
-    let lock_manager = DocumentLockManager::new(state.redis.clone());
-
+    // 3. 读取当前文档并递增版本号
     let current_doc = doc_repo
         .find_by_id(id)
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::not_found("Document"))?;
 
-    if let Some(ref lock_id) = req.lock_id {
-        // 独占锁模式：验证锁归属
-        let lock_info = lock_manager.get_lock_info(id).await
-            .map_err(|e| ApiError::internal(format!("Failed to get lock info: {}", e)))?;
-
-        if lock_info.is_none() || lock_info.unwrap().lock_id != *lock_id {
-            return Err(ApiError::conflict("You don't own the editing lock"));
-        }
-
-        // 4a. 验证版本号（乐观锁）
-        if let Some(expected_version) = req.expected_version {
-            if current_doc.version != expected_version {
-                return Err(ApiError::conflict(
-                    "Document was modified by another user. Please refresh and retry."
-                ));
-            }
-        }
-    }
-    // 协同编辑模式（lock_id 为 None）：跳过锁和版本检查，直接保存（最后写入胜出）
-
-    // 5. 更新数据库中的文档并递增版本号
+    // 4. 更新数据库中的文档并递增版本号
     let update_data = UpdateDocument {
         encrypted_name: req.encrypted_name,
         name_nonce: req.name_nonce,
@@ -429,16 +400,9 @@ pub async fn update_document(
         storage_path: req.storage_path,
         size: req.size,
         version: Some(current_doc.version + 1),
-        locked_by: Some(None), // 清除锁信息
-        locked_at: Some(None),
     };
 
     let updated_doc = doc_repo.update(id, update_data).await.map_err(ApiError::from)?;
-
-    // 6. 保存成功后释放锁（仅独占锁模式）
-    if let Some(ref lock_id) = req.lock_id {
-        lock_manager.release_lock(id, lock_id).await.ok();
-    }
 
     tracing::info!(
         "Document updated: {} by user {} ({:?})",
@@ -455,11 +419,9 @@ pub async fn update_document(
         content_nonce: updated_doc.content_nonce,
         mime_type: updated_doc.mime_type,
         size: updated_doc.size,
-        permission_level: permission_to_string(my_key.permission_level),
+        permission_level: my_key.permission_level.to_string(),
         version: updated_doc.version,
         encrypted_key: None,
-        locked_by: None,
-        locked_at: None,
         created_at: updated_doc.created_at,
         updated_at: updated_doc.updated_at,
     }))
@@ -541,7 +503,7 @@ pub async fn grant_permission(
     Ok(ApiResponse::success(PermissionResponse {
         user_id: target_user.id,
         user_email: target_user.email,
-        permission_level: permission_to_string(key.permission_level),
+        permission_level: key.permission_level.to_string(),
         granted_at: key.created_at,
     }))
 }
@@ -582,7 +544,7 @@ pub async fn list_permissions(
         permissions.push(PermissionResponse {
             user_id: target_user.id,
             user_email: target_user.email,
-            permission_level: permission_to_string(key.permission_level),
+            permission_level: key.permission_level.to_string(),
             granted_at: key.created_at,
         });
     }
@@ -636,14 +598,4 @@ pub async fn revoke_permission(
     );
 
     Ok(NoContent)
-}
-
-// ===== 辅助函数 =====
-
-fn permission_to_string(level: PermissionLevel) -> String {
-    match level {
-        PermissionLevel::Read => "read".to_string(),
-        PermissionLevel::Write => "write".to_string(),
-        PermissionLevel::Owner => "owner".to_string(),
-    }
 }

@@ -1,6 +1,7 @@
 //! 文档密钥实体定义
 
 use sea_orm::entity::prelude::*;
+use std::fmt;
 
 /// Permission level for document access
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
@@ -63,3 +64,14 @@ impl Related<super::user::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl fmt::Display for PermissionLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            PermissionLevel::Read => "read",
+            PermissionLevel::Write => "write",
+            PermissionLevel::Owner => "owner",
+        };
+        write!(f, "{}", s)
+    }
+}

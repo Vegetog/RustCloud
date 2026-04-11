@@ -63,10 +63,6 @@ pub struct DocumentResponse {
     pub version: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encrypted_key: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub locked_by: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub locked_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -111,10 +107,4 @@ pub struct UpdateDocumentRequest {
 
     pub storage_path: Option<String>,
     pub size: Option<i64>,
-
-    /// 用于乐观锁的预期版本号（协同编辑模式下可省略）
-    pub expected_version: Option<i64>,
-
-    /// 用于校验锁归属的锁 ID（协同编辑模式下可省略）
-    pub lock_id: Option<String>,
 }

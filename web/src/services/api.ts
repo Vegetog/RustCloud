@@ -203,8 +203,6 @@ class ApiService {
       content_nonce?: string;
       storage_path?: string;
       size?: number;
-      expected_version?: number;
-      lock_id?: string;
     }
   ) {
     return this.client.patch<{
@@ -254,42 +252,6 @@ class ApiService {
         granted_at: string;
       }>;
     }>(`/documents/${docId}/permissions`);
-  }
-
-  // ===== 文档锁 API =====
-
-  /**
-   * 获取文档编辑锁
-   */
-  async acquireLock(docId: string) {
-    return this.client.get<{
-      success: boolean;
-      data: {
-        locked: boolean;
-        lock_id?: string;
-        version?: number;
-        locked_by?: string;
-        locked_at?: string;
-      };
-    }>(`/documents/${docId}/lock`);
-  }
-
-  /**
-   * 续期锁的 TTL（心跳）
-   */
-  async extendLock(docId: string, lockId: string) {
-    return this.client.post(`/documents/${docId}/lock/heartbeat`, {
-      lock_id: lockId,
-    });
-  }
-
-  /**
-   * 释放编辑锁
-   */
-  async releaseLock(docId: string, lockId: string) {
-    return this.client.delete(`/documents/${docId}/lock`, {
-      data: { lock_id: lockId },
-    });
   }
 
   // ===== 存储 API =====

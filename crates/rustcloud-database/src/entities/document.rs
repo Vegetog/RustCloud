@@ -28,14 +28,8 @@ pub struct Model {
     /// MIME 类型
     pub mime_type: String,
 
-    /// 用于乐观锁的版本号
+    /// 文档版本号（每次更新递增）
     pub version: i64,
-
-    /// 当前持有编辑锁的用户 ID（仅展示，实际锁在 Redis）
-    pub locked_by: Option<Uuid>,
-
-    /// 文档被加锁的时间
-    pub locked_at: Option<DateTimeUtc>,
 
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
