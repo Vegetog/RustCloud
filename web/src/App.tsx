@@ -6,7 +6,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { IdentitiesPage } from './pages/IdentitiesPage';
 import { SharePage } from './pages/SharePage';
-import { CryptoVisualPage } from './pages/CryptoVisualPage';
+import CryptoVisualPage from './pages/CryptoVisualPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
