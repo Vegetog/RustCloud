@@ -64,6 +64,15 @@ pub fn create_router(state: AppState) -> Router {
         .route("/upload", post(handlers::storage::upload_file))
         .layer(DefaultBodyLimit::max(MAX_FILE_SIZE));
 
+    // 受保护的文件夹路由
+    let folder_routes = Router::new()
+        .route("/", post(handlers::folder::create_folder))
+        .route("/", get(handlers::folder::list_folder_children))
+        .route("/:id", get(handlers::folder::get_folder))
+        .route("/:id", patch(handlers::folder::rename_folder))
+        .route("/:id/move", post(handlers::folder::move_folder))
+        .route("/:id", delete(handlers::folder::delete_folder));
+
     // 受保护的身份路由
     let identity_routes = Router::new()
         .route("/", post(handlers::identity::create_identity))
@@ -80,6 +89,7 @@ pub fn create_router(state: AppState) -> Router {
     let protected_routes = Router::new()
         .nest("/auth", protected_auth_routes)
         .nest("/documents", document_routes)
+        .nest("/folders", folder_routes)
         .nest("/shares", protected_share_routes)
         .nest("/storage", storage_routes)
         .nest("/identities", identity_routes)

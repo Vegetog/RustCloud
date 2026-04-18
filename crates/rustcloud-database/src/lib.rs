@@ -44,13 +44,14 @@ pub use pagination::Page;
 
 // 重新导出实体
 pub use entities::{
-    DocumentEntity, DocumentKeyEntity, IdentityEntity, IdentityUserEntity, PermissionLevel,
-    ShareLinkEntity, UserEntity,
+    DocumentEntity, DocumentKeyEntity, FolderEntity, FolderKeyEntity, IdentityEntity,
+    IdentityUserEntity, PermissionLevel, ShareLinkEntity, UserEntity,
 };
 
 // 重新导出仓储
 pub use repositories::{
     DocumentKeyRepository, DocumentKeyRepositoryTrait, DocumentRepository, DocumentRepositoryTrait,
+    FolderKeyRepository, FolderKeyRepositoryTrait, FolderRepository, FolderRepositoryTrait,
     IdentityRepository, IdentityRepositoryTrait, IdentityUserRepository,
     IdentityUserRepositoryTrait, ShareLinkRepository, ShareLinkRepositoryTrait, UserRepository,
     UserRepositoryTrait,
@@ -58,8 +59,9 @@ pub use repositories::{
 
 // 重新导出类型
 pub use types::{
-    CreateDocument, CreateDocumentKey, CreateIdentity, CreateIdentityUser, CreateShareLink,
-    CreateUser, DocumentListParams, SortField, SortOrder, UpdateDocument, UpdateIdentity,
+    CreateDocument, CreateDocumentKey, CreateFolder, CreateFolderKey, CreateIdentity,
+    CreateIdentityUser, CreateShareLink, CreateUser, DocumentListParams, SortField, SortOrder,
+    UpdateDocument, UpdateFolder, UpdateIdentity,
 };
 
 // 重新导出 sea_orm 供下游使用

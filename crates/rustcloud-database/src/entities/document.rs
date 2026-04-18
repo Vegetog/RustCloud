@@ -31,6 +31,8 @@ pub struct Model {
     /// 文档版本号（每次更新递增）
     pub version: i64,
 
+    pub folder_id: Option<Uuid>,
+
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
@@ -45,6 +47,14 @@ pub enum Relation {
     )]
     Owner,
 
+    #[sea_orm(
+        belongs_to = "super::folder::Entity",
+        from = "Column::FolderId",
+        to = "super::folder::Column::Id",
+        on_delete = "SetNull"
+    )]
+    Folder,
+
     #[sea_orm(has_many = "super::document_key::Entity")]
     DocumentKeys,
 
@@ -55,6 +65,12 @@ pub enum Relation {
 impl Related<super::user::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Owner.def()
+    }
+}
+
+impl Related<super::folder::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Folder.def()
     }
 }
 

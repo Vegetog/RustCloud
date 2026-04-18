@@ -25,6 +25,7 @@ pub struct CreateUser {
 #[derive(Debug, Clone)]
 pub struct CreateDocument {
     pub owner_id: Uuid,
+    pub folder_id: Option<Uuid>,
     pub encrypted_name: String,
     pub name_nonce: String,
     pub content_nonce: String,
@@ -92,12 +93,40 @@ pub struct CreateIdentityUser {
     pub user_id: Uuid,
 }
 
+// ========== 文件夹 DTO ==========
+
+/// 创建新文件夹所需数据
+#[derive(Debug, Clone)]
+pub struct CreateFolder {
+    pub owner_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub encrypted_name: String,
+}
+
+/// 更新文件夹所需数据
+#[derive(Debug, Clone, Default)]
+pub struct UpdateFolder {
+    pub encrypted_name: Option<String>,
+    pub parent_id: Option<Option<Uuid>>,
+}
+
+/// 创建文件夹密钥所需数据
+#[derive(Debug, Clone)]
+pub struct CreateFolderKey {
+    pub folder_id: Uuid,
+    pub user_id: Uuid,
+    pub encrypted_name: String,
+    pub permission_level: PermissionLevel,
+}
+
 // ========== 查询参数 ==========
 
 /// 文档列表查询参数
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentListParams {
     pub owner_id: Option<Uuid>,
+    /// None = 不按文件夹过滤；Some(None) = 顶层（无文件夹）；Some(Some(id)) = 指定文件夹
+    pub folder_id: Option<Option<Uuid>>,
     pub sort_by: SortField,
     pub sort_order: SortOrder,
     pub page: u32,
@@ -108,6 +137,7 @@ impl Default for DocumentListParams {
     fn default() -> Self {
         Self {
             owner_id: None,
+            folder_id: None,
             sort_by: SortField::CreatedAt,
             sort_order: SortOrder::Desc,
             page: 1,

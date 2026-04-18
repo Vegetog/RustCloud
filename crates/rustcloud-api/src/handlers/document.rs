@@ -37,6 +37,7 @@ pub async fn list_documents(
     // 构建列表参数
     let params = DocumentListParams {
         owner_id: None,
+        folder_id: None,
         sort_by: match query.sort_by.as_deref() {
             Some("updated_at") => SortField::UpdatedAt,
             Some("size") => SortField::Size,
@@ -163,6 +164,7 @@ pub async fn upload_document(
     let doc = doc_repo
         .create(CreateDocument {
             owner_id: user.id,
+            folder_id: None,
             encrypted_name: metadata.encrypted_name,
             name_nonce: metadata.name_nonce,
             content_nonce: metadata.content_nonce,

@@ -82,13 +82,14 @@ impl DocumentRepositoryTrait for DocumentRepository {
         let model = document::ActiveModel {
             id: Set(id),
             owner_id: Set(data.owner_id),
+            folder_id: Set(data.folder_id),
             encrypted_name: Set(data.encrypted_name),
             name_nonce: Set(data.name_nonce),
             content_nonce: Set(data.content_nonce),
             storage_path: Set(data.storage_path),
             size: Set(data.size),
             mime_type: Set(data.mime_type),
-            version: Set(1), // 初始版本号
+            version: Set(1),
             created_at: Set(now),
             updated_at: Set(now),
         };
@@ -111,6 +112,13 @@ impl DocumentRepositoryTrait for DocumentRepository {
         let query = Document::find()
             .join(JoinType::InnerJoin, document::Relation::DocumentKeys.def())
             .filter(document_key::Column::UserId.eq(user_id));
+
+        // 按 folder_id 过滤：None=不过滤，Some(None)=顶层，Some(Some(id))=指定文件夹
+        let query = match params.folder_id {
+            Some(Some(fid)) => query.filter(document::Column::FolderId.eq(fid)),
+            Some(None) => query.filter(document::Column::FolderId.is_null()),
+            None => query,
+        };
 
         let query = Self::apply_sort(query, &params.sort_by, &params.sort_order);
 
@@ -175,6 +183,7 @@ mod tests {
         DocumentModel {
             id: Uuid::new_v4(),
             owner_id: Uuid::new_v4(),
+            folder_id: None,
             encrypted_name: "encname".to_string(),
             name_nonce: "nonce".to_string(),
             content_nonce: "content_nonce".to_string(),
