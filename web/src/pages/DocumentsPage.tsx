@@ -239,10 +239,11 @@ export function DocumentsPage() {
     }
   };
 
-  const handleDeleteFolder = async (folderId: string) => {
+  const handleDeleteFolder = async (targetFolderId: string) => {
     if (!window.confirm('确定要删除这个文件夹吗？文件夹内的文件将移到根目录，子文件夹将被删除。')) return;
     try {
-      await deleteFolder(folderId, folderId ?? null);
+      // 第二个参数是当前所在目录（刷新用），不是被删除的文件夹
+      await deleteFolder(targetFolderId, folderId ?? null);
     } catch {
       // 错误已在 store 处理
     }
