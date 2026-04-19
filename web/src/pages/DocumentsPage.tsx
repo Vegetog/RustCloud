@@ -534,17 +534,17 @@ export function DocumentsPage() {
                             <FolderOpen className="w-6 h-6" />
                           </div>
                           {folder.permission_level === 'owner' && (
-                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <div className="flex items-center space-x-1">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleShareFolder(folder); }}
-                                className="p-1 text-slate-400 hover:text-blue-500 transition-colors rounded"
+                                className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors rounded-lg"
                                 title="分享文件夹"
                               >
                                 <Share2 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
-                                className="p-1 text-slate-400 hover:text-red-500 transition-colors rounded"
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors rounded-lg"
                                 title="删除文件夹"
                               >
                                 <Trash2 className="w-4 h-4" />
