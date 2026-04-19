@@ -71,13 +71,21 @@ pub struct FolderSnapshotItem {
     pub encrypted_name: String,
 }
 
-/// 快照中的单个文档条目
+/// 快照中的单个文档条目（包含构建 manifest 所需的完整元数据）
 #[derive(Debug, Serialize)]
 pub struct DocumentSnapshotItem {
     pub id: Uuid,
     pub folder_id: Option<Uuid>,
     /// 用 owner 公钥 RSA-OAEP 加密的 DEK
     pub encrypted_key: String,
+    /// AES-GCM 加密的文件名（用 DEK 加密）
+    pub encrypted_name: String,
+    /// 文件名加密 nonce（Base64）
+    pub name_nonce: String,
+    /// 内容加密 nonce（Base64）
+    pub content_nonce: String,
+    pub size: i64,
+    pub mime_type: String,
 }
 
 /// 文件夹快照响应（含完整子树）

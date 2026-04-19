@@ -8,15 +8,29 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
 
-    pub document_id: Uuid,
+    /// 分享目标类型：0 = 文档，1 = 文件夹
+    pub target_type: i16,
+
+    /// 文档 ID（文档分享时不为 None）
+    pub document_id: Option<Uuid>,
+
+    /// 文件夹 ID（文件夹分享时不为 None）
+    pub folder_id: Option<Uuid>,
+
     pub creator_id: Uuid,
 
     /// 唯一访问令牌（URL 安全随机字符串）
     #[sea_orm(unique)]
     pub access_token: String,
 
-    /// Base64 编码的加密文档密钥（用于匿名访问）
+    /// Base64 编码的加密文档密钥（文档分享有效；文件夹分享留空字符串）
     pub encrypted_key: String,
+
+    /// 临时 RSA 公钥 Base64（文件夹公开链接分享专用）
+    pub ephemeral_pubkey: Option<String>,
+
+    /// 文件夹分享清单 JSON（含子树所有项目的密文元数据）
+    pub manifest: Option<String>,
 
     /// 可选密码哈希（Argon2）
     pub password_hash: Option<String>,
@@ -44,6 +58,14 @@ pub enum Relation {
     Document,
 
     #[sea_orm(
+        belongs_to = "super::folder::Entity",
+        from = "Column::FolderId",
+        to = "super::folder::Column::Id",
+        on_delete = "Cascade"
+    )]
+    Folder,
+
+    #[sea_orm(
         belongs_to = "super::user::Entity",
         from = "Column::CreatorId",
         to = "super::user::Column::Id",
@@ -55,6 +77,12 @@ pub enum Relation {
 impl Related<super::document::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Document.def()
+    }
+}
+
+impl Related<super::folder::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Folder.def()
     }
 }
 

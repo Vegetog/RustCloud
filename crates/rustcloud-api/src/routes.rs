@@ -26,6 +26,10 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/access/:token/download",
             get(handlers::share::download_shared_document),
+        )
+        .route(
+            "/access/:token/documents/:doc_id/download",
+            get(handlers::share::download_folder_share_document),
         );
 
     // 受保护的认证路由

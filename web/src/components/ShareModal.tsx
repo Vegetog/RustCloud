@@ -24,6 +24,9 @@ import type { Identity } from '../types/identity';
 import type {
   ShareFolderKeyEntry,
   ShareDocumentKeyEntry,
+  ManifestFolderItem,
+  ManifestDocumentItem,
+  FolderShareManifest,
 } from '../types/folder';
 
 // ===== Props =====
@@ -62,6 +65,7 @@ interface LinkSharingContentProps {
   setMaxAccessCount: Dispatch<SetStateAction<number>>;
   onCopy: () => void;
   isFolderMode: boolean;
+  linkProgress: { current: number; total: number } | null;
 }
 
 interface UserSharingContentProps {
@@ -111,6 +115,7 @@ export function ShareModal({ documentId, encryptedKey, folderId, onClose }: Shar
   const [expirationHours, setExpirationHours] = useState(24);
   const [useMaxAccess, setUseMaxAccess] = useState(false);
   const [maxAccessCount, setMaxAccessCount] = useState(10);
+  const [linkProgress, setLinkProgress] = useState<{ current: number; total: number } | null>(null);
 
   // 用户分享状态
   const [targetEmail, setTargetEmail] = useState('');
@@ -233,7 +238,111 @@ export function ShareModal({ documentId, encryptedKey, folderId, onClose }: Shar
     return { folder_keys, document_keys };
   };
 
-  // ===== 链接分享（仅文档模式） =====
+  // ===== 构造文件夹公开链接 manifest =====
+
+  const buildFolderShareManifest = async (
+    ephemeralPubKey: CryptoKey
+  ): Promise<FolderShareManifest> => {
+    const crypto = new CryptoService();
+    const snapshotRes = await apiService.getFolderSnapshot(folderId!);
+    const snapshot = snapshotRes.data.data;
+
+    const totalItems = snapshot.folders.length + snapshot.documents.length;
+    let done = 0;
+    setLinkProgress({ current: 0, total: totalItems });
+
+    // 重加密文件夹名（owner 私钥解密 → 临时公钥加密）
+    const folders: ManifestFolderItem[] = await Promise.all(
+      snapshot.folders.map(async (f) => {
+        const nameBuffer = await window.crypto.subtle.decrypt(
+          { name: 'RSA-OAEP' }, privateKey!, crypto.base64ToArrayBuffer(f.encrypted_name)
+        );
+        const reEncrypted = await window.crypto.subtle.encrypt(
+          { name: 'RSA-OAEP' }, ephemeralPubKey, nameBuffer
+        );
+        setLinkProgress({ current: ++done, total: totalItems });
+        return {
+          id: f.id,
+          parent_id: f.parent_id ?? null,
+          encrypted_name: crypto.arrayBufferToBase64(reEncrypted),
+        };
+      })
+    );
+
+    // 重加密文档 DEK（owner 私钥解密 → 临时公钥加密）
+    // encrypted_name/name_nonce/content_nonce/size/mime_type 保持原值（AES-GCM，DEK 解密后可用）
+    const documents: ManifestDocumentItem[] = await Promise.all(
+      snapshot.documents.map(async (d) => {
+        const dekBuffer = await window.crypto.subtle.decrypt(
+          { name: 'RSA-OAEP' }, privateKey!, crypto.base64ToArrayBuffer(d.encrypted_key)
+        );
+        const reEncryptedDek = await window.crypto.subtle.encrypt(
+          { name: 'RSA-OAEP' }, ephemeralPubKey, dekBuffer
+        );
+        setLinkProgress({ current: ++done, total: totalItems });
+        return {
+          id: d.id,
+          folder_id: d.folder_id ?? null,
+          encrypted_key: crypto.arrayBufferToBase64(reEncryptedDek),
+          encrypted_name: d.encrypted_name,
+          name_nonce: d.name_nonce,
+          content_nonce: d.content_nonce,
+          size: d.size,
+          mime_type: d.mime_type,
+        };
+      })
+    );
+
+    return { root_folder_id: snapshot.root_folder_id, folders, documents };
+  };
+
+  // ===== 文件夹公开链接分享 =====
+
+  const handleCreateFolderShare = async () => {
+    if (!privateKey) { setError('请先登录'); return; }
+    setLoading(true);
+    setError(null);
+    setShareLink(null);
+    setLinkProgress(null);
+    try {
+      const crypto = new CryptoService();
+
+      // 生成临时密钥对
+      const { publicKey: ephemeralPubKey, privateKey: ephemeralPrivKey } =
+        await crypto.generateEphemeralKeyPair();
+
+      // 构造 manifest（所有密钥均用临时公钥重加密）
+      const manifest = await buildFolderShareManifest(ephemeralPubKey);
+
+      // 导出临时密钥
+      const ephemeralPubKeyBase64 = await crypto.exportPublicKeySPKI(ephemeralPubKey);
+      const ephemeralPrivKeyBase64 = await crypto.exportPrivateKeyPKCS8(ephemeralPrivKey);
+
+      // 创建分享记录
+      const expiresIn = useExpiration ? expirationHours * 3600 : undefined;
+      const response = await apiService.createFolderShare({
+        folder_id: folderId!,
+        ephemeral_pubkey: ephemeralPubKeyBase64,
+        manifest,
+        expires_in: expiresIn,
+        max_access_count: useMaxAccess ? maxAccessCount : undefined,
+      });
+
+      const shareToken = response.data.data.access_token;
+      // 临时私钥放 URL fragment，服务器永远收不到
+      setShareLink(`${window.location.origin}/share/${shareToken}#esk=${ephemeralPrivKeyBase64}`);
+    } catch (err) {
+      const message = isAxiosError(err)
+        ? ((err.response?.data as { message?: string } | undefined)?.message || err.message)
+        : err instanceof Error ? err.message : '创建分享链接失败';
+      setError(message);
+    } finally {
+      setLoading(false);
+      setLinkProgress(null);
+    }
+  };
+
+  // ===== 链接分享（文档模式） =====
 
   const handleCreateShare = async () => {
     if (!privateKey || !publicKey) { setError('请先登录'); return; }
@@ -490,6 +599,7 @@ export function ShareModal({ documentId, encryptedKey, folderId, onClose }: Shar
               setMaxAccessCount={setMaxAccessCount}
               onCopy={handleCopy}
               isFolderMode={isFolderMode}
+              linkProgress={linkProgress}
             />
           ) : activeTab === 'user' ? (
             <UserSharingContent
@@ -526,7 +636,7 @@ export function ShareModal({ documentId, encryptedKey, folderId, onClose }: Shar
 
         {/* 底部按钮 */}
         <div className="flex space-x-3 p-6 border-t border-slate-200">
-          {activeTab === 'link' && !shareLink && !isFolderMode ? (
+          {activeTab === 'link' && !shareLink ? (
             <>
               <button
                 onClick={onClose}
@@ -536,7 +646,7 @@ export function ShareModal({ documentId, encryptedKey, folderId, onClose }: Shar
                 取消
               </button>
               <button
-                onClick={handleCreateShare}
+                onClick={isFolderMode ? handleCreateFolderShare : handleCreateShare}
                 disabled={loading}
                 className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
@@ -587,29 +697,29 @@ function LinkSharingContent({
   error, shareLink, copied,
   useExpiration, setUseExpiration, expirationHours, setExpirationHours,
   useMaxAccess, setUseMaxAccess, maxAccessCount, setMaxAccessCount,
-  onCopy, isFolderMode,
+  onCopy, isFolderMode, linkProgress,
 }: LinkSharingContentProps) {
-  if (isFolderMode) {
-    return (
-      <div className="space-y-5">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start space-x-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-amber-800">
-            <p className="font-medium mb-1">文件夹公开链接分享</p>
-            <p>此功能将在 PR-4 中提供，届时支持生成携带一次性密钥的公开访问链接。</p>
-            <p className="mt-2">如需现在分享，请切换到「指定用户」或「指定身份」标签。</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5">
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-red-700">{error}</div>
+        </div>
+      )}
+
+      {linkProgress && <ProgressBar current={linkProgress.current} total={linkProgress.total} />}
+
+      {isFolderMode && !shareLink && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start space-x-3">
+          <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-900">
+            <p className="font-medium mb-1">零知识文件夹公开链接</p>
+            <p className="text-blue-700">
+              系统将为此文件夹生成一次性临时密钥对。所有子项密钥在本地重加密后写入分享记录，
+              临时私钥仅存于 URL 片段（不经过服务器）。任何拿到完整链接的人均可浏览并下载文件夹内容。
+            </p>
+          </div>
         </div>
       )}
 
