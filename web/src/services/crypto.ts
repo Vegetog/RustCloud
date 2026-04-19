@@ -334,6 +334,41 @@ export class CryptoService {
   }
 
   /**
+   * 使用 RSA-OAEP 公钥加密文件夹名
+   * 文件夹名直接用 RSA 加密（不用 AES DEK），因为名称短（< 190 字节）
+   *
+   * @param name - 明文文件夹名
+   * @param publicKey - 用户 RSA 公钥
+   * @returns Base64 编码的密文
+   */
+  async rsaEncryptFolderName(name: string, publicKey: CryptoKey): Promise<string> {
+    const nameBytes = new TextEncoder().encode(name);
+    const encrypted = await crypto.subtle.encrypt(
+      { name: 'RSA-OAEP' },
+      publicKey,
+      nameBytes
+    );
+    return this.arrayBufferToBase64(encrypted);
+  }
+
+  /**
+   * 使用 RSA-OAEP 私钥解密文件夹名
+   *
+   * @param encryptedName - Base64 编码的密文
+   * @param privateKey - 用户 RSA 私钥
+   * @returns 明文文件夹名
+   */
+  async rsaDecryptFolderName(encryptedName: string, privateKey: CryptoKey): Promise<string> {
+    const encryptedBuffer = this.base64ToArrayBuffer(encryptedName);
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'RSA-OAEP' },
+      privateKey,
+      encryptedBuffer
+    );
+    return new TextDecoder().decode(decrypted);
+  }
+
+  /**
    * 将 ArrayBuffer 转换为 Base64 字符串
    *
    * @param buffer - 待转换的 ArrayBuffer

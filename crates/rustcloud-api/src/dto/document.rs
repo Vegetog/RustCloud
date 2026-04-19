@@ -23,6 +23,9 @@ pub struct UploadMetadata {
     pub encrypted_key: String,
 
     pub mime_type: Option<String>,
+
+    /// 目标文件夹 ID（null = 根目录，省略 = 不过滤）
+    pub folder_id: Option<String>,
 }
 
 /// 文档列表查询参数
@@ -32,6 +35,8 @@ pub struct DocumentListQuery {
     pub page_size: Option<u32>,
     pub sort_by: Option<String>,
     pub sort_order: Option<String>,
+    /// "root" = 顶层无文件夹；UUID = 指定文件夹；省略 = 不过滤
+    pub folder_id: Option<String>,
 }
 
 /// 授权请求

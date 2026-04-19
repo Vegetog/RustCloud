@@ -11,6 +11,11 @@ import type {
   ShareLink,
 } from '../types/document';
 import type {
+  Folder,
+  FolderListResponse,
+  CreateFolderRequest,
+} from '../types/folder';
+import type {
   Identity,
   IdentityListResponse,
   IdentityDetailResponse,
@@ -142,8 +147,9 @@ class ApiService {
 
   /**
    * 获取文档分页列表
+   * @param folder_id 'root' 表示顶层，UUID 表示指定文件夹，不传表示不过滤
    */
-  async getDocuments(params?: { page?: number; page_size?: number }) {
+  async getDocuments(params?: { page?: number; page_size?: number; folder_id?: string | null }) {
     return this.client.get<{ success: boolean; data: DocumentListResponse }>(
       '/documents',
       { params }
@@ -252,6 +258,42 @@ class ApiService {
         granted_at: string;
       }>;
     }>(`/documents/${docId}/permissions`);
+  }
+
+  // ===== 文件夹 API =====
+
+  /**
+   * 获取文件夹列表（子文件夹）
+   * @param parent_id 'root' 表示顶层，UUID 表示指定文件夹
+   */
+  async getFolders(parent_id?: string | null) {
+    return this.client.get<{ success: boolean; data: FolderListResponse }>(
+      '/folders',
+      { params: { parent_id: parent_id ?? 'root' } }
+    );
+  }
+
+  /**
+   * 获取文件夹详情
+   */
+  async getFolderDetail(id: string) {
+    return this.client.get<{ success: boolean; data: { folder: Folder } }>(
+      `/folders/${id}`
+    );
+  }
+
+  /**
+   * 创建文件夹
+   */
+  async createFolder(data: CreateFolderRequest) {
+    return this.client.post<{ success: boolean; data: Folder }>('/folders', data);
+  }
+
+  /**
+   * 删除文件夹（递归删除子文件夹，文件移到根）
+   */
+  async deleteFolder(id: string) {
+    return this.client.delete(`/folders/${id}`);
   }
 
   // ===== 存储 API =====

@@ -18,10 +18,12 @@ interface DocumentState {
   loading: boolean;
   error: string | null;
   uploadProgress: number;
+  /** 当前所在文件夹 ID（null = 根目录） */
+  currentFolderId: string | null;
 
   // 操作
-  loadDocuments: (page?: number) => Promise<void>;
-  uploadDocument: (file: File) => Promise<void>;
+  loadDocuments: (page?: number, folderId?: string | null) => Promise<void>;
+  uploadDocument: (file: File, folderId?: string | null) => Promise<void>;
   downloadDocument: (id: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   clearError: () => void;
@@ -36,13 +38,22 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   loading: false,
   error: null,
   uploadProgress: 0,
+  currentFolderId: null,
 
   // 分页加载文档列表
-  loadDocuments: async (page = 1) => {
-    set({ loading: true, error: null });
+  loadDocuments: async (page = 1, folderId = undefined) => {
+    set({ loading: true, error: null, currentFolderId: folderId ?? null });
 
     try {
-      const response = await apiService.getDocuments({ page, page_size: 20 });
+      const params: { page: number; page_size: number; folder_id?: string | null } = {
+        page,
+        page_size: 20,
+      };
+      // folder_id: 'root' 表示顶层无文件夹，undefined 表示不过滤（全部）
+      if (folderId !== undefined) {
+        params.folder_id = folderId ?? 'root';
+      }
+      const response = await apiService.getDocuments(params);
       const data = response.data.data;
 
       // 在客户端解密文件名
@@ -86,7 +97,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   // 上传加密文档
-  uploadDocument: async (file: File) => {
+  uploadDocument: async (file: File, folderId?: string | null) => {
     set({ loading: true, error: null, uploadProgress: 0 });
 
     try {
@@ -116,13 +127,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         content_nonce: encrypted.contentNonce,
         encrypted_key: encrypted.encryptedKey,
         mime_type: file.type || 'application/octet-stream',
+        folder_id: folderId ?? null,
       });
 
       // 进度：100% - 上传完成
       set({ uploadProgress: 100 });
 
       // 重新加载文档列表
-      await get().loadDocuments(get().page);
+      await get().loadDocuments(get().page, get().currentFolderId);
 
       set({ loading: false, uploadProgress: 0 });
     } catch (error) {
@@ -224,7 +236,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       await apiService.deleteDocument(id);
 
       // 重新加载文档列表
-      await get().loadDocuments(get().page);
+      await get().loadDocuments(get().page, get().currentFolderId);
     } catch (error) {
       console.error('Failed to delete document:', error);
       set({

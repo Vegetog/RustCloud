@@ -1,7 +1,4 @@
-use axum::{
-    extract::{Path, Query, State},
-    http::StatusCode,
-};
+use axum::extract::{Path, Query, State};
 use uuid::Uuid;
 
 use rustcloud_database::{
@@ -197,7 +194,7 @@ pub async fn rename_folder(
 
     // 批量更新所有成员的 folder_key.encrypted_name
     for entry in &req.encrypted_names {
-        if let Some(mut key) = key_repo
+        if let Some(key) = key_repo
             .find_by_folder_and_user(folder_id, entry.user_id)
             .await
             .map_err(ApiError::from)?

@@ -25,6 +25,14 @@ function App() {
           }
         />
         <Route
+          path="/documents/folder/:folderId"
+          element={
+            <ProtectedRoute>
+              <DocumentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/identities"
           element={
             <ProtectedRoute>

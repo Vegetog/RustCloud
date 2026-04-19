@@ -7,6 +7,7 @@ export interface Document {
   content_nonce: string;
   size: number;
   mime_type: string;
+  folder_id?: string | null;
   permission_level: 'owner' | 'write' | 'read';
   encrypted_key?: string;
   decrypted_name?: string;
@@ -33,6 +34,7 @@ export interface UploadMetadata {
   content_nonce: string;
   encrypted_key: string;
   mime_type: string;
+  folder_id?: string | null;
 }
 
 export interface ShareLink {
