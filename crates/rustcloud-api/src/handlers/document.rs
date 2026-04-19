@@ -10,7 +10,8 @@ use uuid::Uuid;
 
 use rustcloud_database::{
     CreateDocument, CreateDocumentKey, DocumentKeyRepository, DocumentKeyRepositoryTrait,
-    DocumentListParams, DocumentRepository, DocumentRepositoryTrait, PermissionLevel,
+    DocumentListParams, DocumentRepository, DocumentRepositoryTrait, FolderKeyRepository,
+    FolderKeyRepositoryTrait, FolderRepository, FolderRepositoryTrait, PermissionLevel,
     SortField, SortOrder, UpdateDocument, UserRepository, UserRepositoryTrait,
 };
 
@@ -34,10 +35,21 @@ pub async fn list_documents(
     let doc_repo = DocumentRepository::new(state.db.clone());
     let key_repo = DocumentKeyRepository::new(state.db.clone());
 
+    // 解析 folder_id 过滤参数
+    // None = 不过滤；"root" = 顶层；UUID = 指定文件夹
+    let folder_id_filter: Option<Option<Uuid>> = match query.folder_id.as_deref() {
+        None => None,
+        Some("root") => Some(None),
+        Some(id) => match Uuid::parse_str(id) {
+            Ok(uuid) => Some(Some(uuid)),
+            Err(_) => return Err(ApiError::bad_request("Invalid folder_id")),
+        },
+    };
+
     // 构建列表参数
     let params = DocumentListParams {
         owner_id: None,
-        folder_id: None,
+        folder_id: folder_id_filter,
         sort_by: match query.sort_by.as_deref() {
             Some("updated_at") => SortField::UpdatedAt,
             Some("size") => SortField::Size,
@@ -144,6 +156,33 @@ pub async fn upload_document(
 
     let file_content = file_content.ok_or_else(|| ApiError::bad_request("Missing file"))?;
     let metadata = metadata.ok_or_else(|| ApiError::bad_request("Missing metadata"))?;
+
+    // 解析并校验可选的 folder_id
+    let folder_id: Option<Uuid> = match metadata.folder_id.as_deref() {
+        None | Some("null") => None,
+        Some(id) => match Uuid::parse_str(id) {
+            Ok(uuid) => {
+                // 校验文件夹存在且调用者拥有访问权限，防止越权写入或引发外键错误
+                let folder_repo = FolderRepository::new(state.db.clone());
+                folder_repo
+                    .find_by_id(uuid)
+                    .await
+                    .map_err(ApiError::from)?
+                    .ok_or_else(|| ApiError::not_found("Folder"))?;
+
+                let fkey_repo = FolderKeyRepository::new(state.db.clone());
+                fkey_repo
+                    .find_by_folder_and_user(uuid, user.id)
+                    .await
+                    .map_err(ApiError::from)?
+                    .ok_or_else(|| ApiError::forbidden("No access to this folder"))?;
+
+                Some(uuid)
+            }
+            Err(_) => return Err(ApiError::bad_request("Invalid folder_id")),
+        },
+    };
+
     // 生成存储路径
     let doc_id = Uuid::new_v4();
     let storage_path = format!("documents/{}/{}", user.id, doc_id);
@@ -164,7 +203,7 @@ pub async fn upload_document(
     let doc = doc_repo
         .create(CreateDocument {
             owner_id: user.id,
-            folder_id: None,
+            folder_id,
             encrypted_name: metadata.encrypted_name,
             name_nonce: metadata.name_nonce,
             content_nonce: metadata.content_nonce,
