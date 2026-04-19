@@ -369,6 +369,68 @@ export class CryptoService {
   }
 
   /**
+   * 生成一次性 RSA-2048 临时密钥对（用于文件夹公开链接分享）
+   * 公钥写入分享记录，私钥放 URL fragment，服务器永远不持有私钥
+   */
+  async generateEphemeralKeyPair(): Promise<{ publicKey: CryptoKey; privateKey: CryptoKey }> {
+    const keyPair = await crypto.subtle.generateKey(
+      {
+        name: 'RSA-OAEP',
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: 'SHA-256',
+      },
+      true,
+      ['encrypt', 'decrypt']
+    );
+    return { publicKey: keyPair.publicKey, privateKey: keyPair.privateKey };
+  }
+
+  /**
+   * 导出 RSA 公钥为 SPKI Base64
+   */
+  async exportPublicKeySPKI(key: CryptoKey): Promise<string> {
+    const exported = await crypto.subtle.exportKey('spki', key);
+    return this.arrayBufferToBase64(exported);
+  }
+
+  /**
+   * 导出 RSA 私钥为 PKCS8 Base64
+   */
+  async exportPrivateKeyPKCS8(key: CryptoKey): Promise<string> {
+    const exported = await crypto.subtle.exportKey('pkcs8', key);
+    return this.arrayBufferToBase64(exported);
+  }
+
+  /**
+   * 从 SPKI Base64 导入 RSA 公钥（encrypt）
+   */
+  async importPublicKeySPKI(base64: string): Promise<CryptoKey> {
+    const buffer = this.base64ToArrayBuffer(base64);
+    return crypto.subtle.importKey(
+      'spki',
+      buffer,
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      false,
+      ['encrypt']
+    );
+  }
+
+  /**
+   * 从 PKCS8 Base64 导入 RSA 私钥（decrypt）
+   */
+  async importPrivateKeyPKCS8(base64: string): Promise<CryptoKey> {
+    const buffer = this.base64ToArrayBuffer(base64);
+    return crypto.subtle.importKey(
+      'pkcs8',
+      buffer,
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      false,
+      ['decrypt']
+    );
+  }
+
+  /**
    * 将 ArrayBuffer 转换为 Base64 字符串
    *
    * @param buffer - 待转换的 ArrayBuffer

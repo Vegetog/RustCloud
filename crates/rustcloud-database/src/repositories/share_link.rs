@@ -52,10 +52,14 @@ impl ShareLinkRepositoryTrait for ShareLinkRepository {
 
         let model = share_link::ActiveModel {
             id: Set(id),
+            target_type: Set(data.target_type),
             document_id: Set(data.document_id),
+            folder_id: Set(data.folder_id),
             creator_id: Set(data.creator_id),
             access_token: Set(data.access_token),
             encrypted_key: Set(data.encrypted_key),
+            ephemeral_pubkey: Set(data.ephemeral_pubkey),
+            manifest: Set(data.manifest),
             password_hash: Set(None),
             expires_at: Set(data.expires_at),
             max_access_count: Set(data.max_access_count),
@@ -118,10 +122,14 @@ mod tests {
     fn mock_share_link() -> ShareLinkModel {
         ShareLinkModel {
             id: Uuid::new_v4(),
-            document_id: Uuid::new_v4(),
+            target_type: 0,
+            document_id: Some(Uuid::new_v4()),
+            folder_id: None,
             creator_id: Uuid::new_v4(),
             access_token: "token123".to_string(),
             encrypted_key: "enckey".to_string(),
+            ephemeral_pubkey: None,
+            manifest: None,
             password_hash: None,
             expires_at: None,
             max_access_count: Some(10),

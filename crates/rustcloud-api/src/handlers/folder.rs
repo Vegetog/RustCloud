@@ -399,6 +399,11 @@ pub async fn get_folder_snapshot(
                 id: doc.id,
                 folder_id: doc.folder_id,
                 encrypted_key: key.clone(),
+                encrypted_name: doc.encrypted_name,
+                name_nonce: doc.name_nonce,
+                content_nonce: doc.content_nonce,
+                size: doc.size,
+                mime_type: doc.mime_type,
             })
         })
         .collect();

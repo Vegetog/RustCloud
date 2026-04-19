@@ -61,10 +61,20 @@ pub struct CreateDocumentKey {
 /// 创建新分享链接所需数据
 #[derive(Debug, Clone)]
 pub struct CreateShareLink {
-    pub document_id: Uuid,
+    /// 分享目标类型：0 = 文档，1 = 文件夹
+    pub target_type: i16,
+    /// 文档 ID（文档分享时使用）
+    pub document_id: Option<Uuid>,
+    /// 文件夹 ID（文件夹分享时使用）
+    pub folder_id: Option<Uuid>,
     pub creator_id: Uuid,
     pub access_token: String,
+    /// 文档分享的加密 DEK；文件夹分享留空字符串
     pub encrypted_key: String,
+    /// 临时 RSA 公钥（文件夹公开链接专用）
+    pub ephemeral_pubkey: Option<String>,
+    /// 文件夹分享清单 JSON（文件夹公开链接专用）
+    pub manifest: Option<String>,
     pub expires_at: Option<DateTime<Utc>>,
     pub max_access_count: Option<i32>,
 }

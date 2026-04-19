@@ -16,6 +16,7 @@ import type {
   CreateFolderRequest,
   FolderSnapshotResponse,
   ShareFolderRequest,
+  FolderShareManifest,
 } from '../types/folder';
 import type {
   Identity,
@@ -337,28 +338,75 @@ class ApiService {
   // ===== 分享 API =====
 
   /**
-   * 创建分享链接
+   * 创建文档分享链接
    */
   async createShare(data: CreateShareRequest) {
     return this.client.post<{ success: boolean; data: ShareLink }>('/shares', data);
   }
 
   /**
-   * 访问分享链接（公开访问，无需认证）
+   * 创建文件夹公开分享链接（临时密钥对 + manifest）
+   */
+  async createFolderShare(data: {
+    folder_id: string;
+    ephemeral_pubkey: string;
+    manifest: FolderShareManifest;
+    expires_in?: number;
+    max_access_count?: number;
+  }) {
+    return this.client.post<{
+      success: boolean;
+      data: {
+        id: string;
+        target_type: number;
+        folder_id: string;
+        access_token: string;
+        expires_at: string | null;
+        max_access_count: number | null;
+        access_count: number;
+        created_at: string;
+      };
+    }>('/shares', {
+      target_type: 1,
+      folder_id: data.folder_id,
+      ephemeral_pubkey: data.ephemeral_pubkey,
+      manifest: JSON.stringify(data.manifest),
+      expires_in: data.expires_in,
+      max_access_count: data.max_access_count,
+    });
+  }
+
+  /**
+   * 访问分享链接（公开访问，无需认证）—— 支持文档和文件夹两种类型
    */
   async accessShare(token: string) {
     return this.client.get<{
       success: boolean;
       data: {
-        document_id: string;
-        encrypted_key: string;
-        encrypted_name: string;
-        name_nonce: string;
-        content_nonce: string;
-        size: number;
-        mime_type: string;
+        target_type: number;
+        // 文档分享字段
+        document_id?: string;
+        encrypted_key?: string;
+        encrypted_name?: string;
+        name_nonce?: string;
+        content_nonce?: string;
+        size?: number;
+        mime_type?: string;
+        // 文件夹分享字段
+        folder_id?: string;
+        ephemeral_pubkey?: string;
+        manifest?: string;
       };
     }>(`/shares/access/${token}`);
+  }
+
+  /**
+   * 下载文件夹分享中的指定文档（公开接口，无需认证）
+   */
+  async downloadFolderShareDocument(token: string, docId: string) {
+    return this.client.get(`/shares/access/${token}/documents/${docId}/download`, {
+      responseType: 'arraybuffer',
+    });
   }
 
   // ===== 身份 API =====
