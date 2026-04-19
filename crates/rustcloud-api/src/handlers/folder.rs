@@ -2,13 +2,16 @@ use axum::extract::{Path, Query, State};
 use uuid::Uuid;
 
 use rustcloud_database::{
-    CreateFolder, FolderKeyRepository, FolderKeyRepositoryTrait, FolderRepository,
-    FolderRepositoryTrait, PermissionLevel, UpdateFolder,
+    CreateDocumentKey, CreateFolder, CreateFolderKey, DocumentKeyRepository,
+    DocumentKeyRepositoryTrait, DocumentRepository, DocumentRepositoryTrait, FolderKeyRepository,
+    FolderKeyRepositoryTrait, FolderRepository, FolderRepositoryTrait, PermissionLevel,
+    UpdateFolder, UserRepository, UserRepositoryTrait,
 };
 
 use crate::dto::folder::{
-    CreateFolderRequest, FolderChildrenQuery, FolderChildrenResponse, FolderResponse,
-    MoveFolderRequest, RenameFolderRequest,
+    CreateFolderRequest, DocumentSnapshotItem, FolderChildrenQuery, FolderChildrenResponse,
+    FolderResponse, FolderSnapshotItem, FolderSnapshotResponse, MoveFolderRequest,
+    RenameFolderRequest, ShareFolderRequest,
 };
 use crate::error::ApiError;
 use crate::extractors::{AuthUser, ValidatedJson};
@@ -305,6 +308,208 @@ pub async fn delete_folder(
         .delete(folder_id)
         .await
         .map_err(ApiError::from)?;
+
+    Ok(NoContent)
+}
+
+/// GET /api/v1/folders/:id/snapshot
+///
+/// 返回文件夹子树快照（owner 专用），供前端批量重加密后提交分享请求。
+/// 返回的 encrypted_name / encrypted_key 均为调用者自己的 RSA 加密版本。
+pub async fn get_folder_snapshot(
+    State(state): State<AppState>,
+    AuthUser(user): AuthUser,
+    Path(folder_id): Path<Uuid>,
+) -> Result<ApiResponse<FolderSnapshotResponse>, ApiError> {
+    let folder_repo = FolderRepository::new(state.db.clone());
+    let fkey_repo = FolderKeyRepository::new(state.db.clone());
+    let doc_repo = DocumentRepository::new(state.db.clone());
+    let doc_key_repo = DocumentKeyRepository::new(state.db.clone());
+
+    // 必须是 owner
+    let my_key = fkey_repo
+        .find_by_folder_and_user(folder_id, user.id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::forbidden("Folder access denied"))?;
+
+    if my_key.permission_level != PermissionLevel::Owner {
+        return Err(ApiError::forbidden("Owner permission required for snapshot"));
+    }
+
+    let root_folder = folder_repo
+        .find_by_id(folder_id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::not_found("Folder"))?;
+
+    // 获取所有后代文件夹（BFS）
+    let descendants = folder_repo
+        .find_descendants(folder_id)
+        .await
+        .map_err(ApiError::from)?;
+
+    let all_folder_ids: Vec<Uuid> = std::iter::once(folder_id)
+        .chain(descendants.iter().map(|f| f.id))
+        .collect();
+
+    // 构建文件夹快照列表
+    let mut folder_items = vec![FolderSnapshotItem {
+        id: root_folder.id,
+        parent_id: root_folder.parent_id,
+        encrypted_name: my_key.encrypted_name,
+    }];
+
+    for desc in &descendants {
+        let enc_name = fkey_repo
+            .find_by_folder_and_user(desc.id, user.id)
+            .await
+            .map_err(ApiError::from)?
+            .map(|k| k.encrypted_name)
+            .unwrap_or_else(|| desc.encrypted_name.clone());
+
+        folder_items.push(FolderSnapshotItem {
+            id: desc.id,
+            parent_id: desc.parent_id,
+            encrypted_name: enc_name,
+        });
+    }
+
+    // 查询这些文件夹中所有 owner 拥有的文档
+    let docs = doc_repo
+        .find_in_folders(user.id, all_folder_ids)
+        .await
+        .map_err(ApiError::from)?;
+
+    let doc_ids: Vec<Uuid> = docs.iter().map(|d| d.id).collect();
+    let doc_keys = doc_key_repo
+        .find_by_user_and_documents(user.id, doc_ids)
+        .await
+        .map_err(ApiError::from)?;
+
+    let key_map: std::collections::HashMap<Uuid, String> = doc_keys
+        .into_iter()
+        .map(|k| (k.document_id, k.encrypted_key))
+        .collect();
+
+    let document_items: Vec<DocumentSnapshotItem> = docs
+        .into_iter()
+        .filter_map(|doc| {
+            key_map.get(&doc.id).map(|key| DocumentSnapshotItem {
+                id: doc.id,
+                folder_id: doc.folder_id,
+                encrypted_key: key.clone(),
+            })
+        })
+        .collect();
+
+    Ok(ApiResponse::success(FolderSnapshotResponse {
+        root_folder_id: folder_id,
+        folders: folder_items,
+        documents: document_items,
+    }))
+}
+
+/// POST /api/v1/folders/:id/share
+///
+/// 用户间文件夹分享（快照式）。
+/// 前端已在客户端完成全部重加密，此处仅校验合法性并写入 DB。
+pub async fn share_folder(
+    State(state): State<AppState>,
+    AuthUser(user): AuthUser,
+    Path(folder_id): Path<Uuid>,
+    ValidatedJson(req): ValidatedJson<ShareFolderRequest>,
+) -> Result<NoContent, ApiError> {
+    let folder_repo = FolderRepository::new(state.db.clone());
+    let fkey_repo = FolderKeyRepository::new(state.db.clone());
+    let doc_key_repo = DocumentKeyRepository::new(state.db.clone());
+    let user_repo = UserRepository::new(state.db.clone());
+
+    // 校验调用者是 owner
+    let my_key = fkey_repo
+        .find_by_folder_and_user(folder_id, user.id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::forbidden("Folder access denied"))?;
+
+    if my_key.permission_level != PermissionLevel::Owner {
+        return Err(ApiError::forbidden("Owner permission required to share folder"));
+    }
+
+    // 构建子树 ID 集合用于校验
+    let descendants = folder_repo
+        .find_descendants(folder_id)
+        .await
+        .map_err(ApiError::from)?;
+
+    let allowed_folder_ids: std::collections::HashSet<Uuid> = std::iter::once(folder_id)
+        .chain(descendants.iter().map(|f| f.id))
+        .collect();
+
+    // 校验请求中所有 folder_id 均在子树内
+    for entry in &req.folder_keys {
+        if !allowed_folder_ids.contains(&entry.folder_id) {
+            return Err(ApiError::forbidden("Folder is not in the subtree"));
+        }
+    }
+
+    // 校验文档归属：批量查 document_key，确保 caller 拥有每个文档的 key
+    if !req.document_keys.is_empty() {
+        let doc_ids: Vec<Uuid> = req.document_keys.iter().map(|e| e.document_id).collect();
+        let owned = doc_key_repo
+            .find_by_user_and_documents(user.id, doc_ids.clone())
+            .await
+            .map_err(ApiError::from)?;
+        if owned.len() != doc_ids.len() {
+            return Err(ApiError::forbidden("Some documents are not owned by you"));
+        }
+    }
+
+    // 查找目标用户
+    let target_user = user_repo
+        .find_by_email(&req.target_email)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::not_found("User"))?;
+
+    let permission_level = match req.permission_level.as_str() {
+        "read" => PermissionLevel::Read,
+        "write" => PermissionLevel::Write,
+        _ => return Err(ApiError::bad_request("Invalid permission level")),
+    };
+
+    // 为目标用户写入文件夹密钥（upsert 保证幂等）
+    for entry in &req.folder_keys {
+        fkey_repo
+            .upsert(CreateFolderKey {
+                folder_id: entry.folder_id,
+                user_id: target_user.id,
+                encrypted_name: entry.encrypted_name.clone(),
+                permission_level,
+            })
+            .await
+            .map_err(ApiError::from)?;
+    }
+
+    // 为目标用户写入文档密钥
+    for entry in &req.document_keys {
+        doc_key_repo
+            .upsert(CreateDocumentKey {
+                document_id: entry.document_id,
+                user_id: target_user.id,
+                encrypted_key: entry.encrypted_key.clone(),
+                permission_level,
+            })
+            .await
+            .map_err(ApiError::from)?;
+    }
+
+    tracing::info!(
+        "Folder {} shared with {} by {}",
+        folder_id,
+        target_user.email,
+        user.email
+    );
 
     Ok(NoContent)
 }

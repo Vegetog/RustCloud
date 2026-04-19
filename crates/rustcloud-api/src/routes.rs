@@ -71,7 +71,9 @@ pub fn create_router(state: AppState) -> Router {
         .route("/:id", get(handlers::folder::get_folder))
         .route("/:id", patch(handlers::folder::rename_folder))
         .route("/:id/move", post(handlers::folder::move_folder))
-        .route("/:id", delete(handlers::folder::delete_folder));
+        .route("/:id", delete(handlers::folder::delete_folder))
+        .route("/:id/snapshot", get(handlers::folder::get_folder_snapshot))
+        .route("/:id/share", post(handlers::folder::share_folder));
 
     // 受保护的身份路由
     let identity_routes = Router::new()

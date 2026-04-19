@@ -94,6 +94,7 @@ export function DocumentsPage() {
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [shareDocumentId, setShareDocumentId] = useState<string | null>(null);
   const [shareEncryptedKey, setShareEncryptedKey] = useState<string | null>(null);
+  const [shareFolderId, setShareFolderId] = useState<string | null>(null);
 
   // 预览 / 编辑弹窗
   const [previewDocument, setPreviewDocument] = useState<DocumentWithEncryptedKey | null>(null);
@@ -167,6 +168,14 @@ export function DocumentsPage() {
     setShareModalOpen(false);
     setShareDocumentId(null);
     setShareEncryptedKey(null);
+    setShareFolderId(null);
+  };
+
+  const handleShareFolder = (folder: import('../types/folder').Folder) => {
+    setShareFolderId(folder.id);
+    setShareDocumentId(null);
+    setShareEncryptedKey(null);
+    setShareModalOpen(true);
   };
 
   const handlePreview = async (doc: Document) => {
@@ -525,13 +534,22 @@ export function DocumentsPage() {
                             <FolderOpen className="w-6 h-6" />
                           </div>
                           {folder.permission_level === 'owner' && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
-                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all rounded"
-                              title="删除文件夹"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleShareFolder(folder); }}
+                                className="p-1 text-slate-400 hover:text-blue-500 transition-colors rounded"
+                                title="分享文件夹"
+                              >
+                                <Share2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                                className="p-1 text-slate-400 hover:text-red-500 transition-colors rounded"
+                                title="删除文件夹"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           )}
                         </div>
                         <h3
@@ -689,11 +707,17 @@ export function DocumentsPage() {
         </div>
       )}
 
-      {/* 分享弹窗 */}
+      {/* 分享弹窗（文档模式 or 文件夹模式） */}
       {shareModalOpen && shareDocumentId && shareEncryptedKey && (
         <ShareModal
           documentId={shareDocumentId}
           encryptedKey={shareEncryptedKey}
+          onClose={handleCloseShareModal}
+        />
+      )}
+      {shareModalOpen && shareFolderId && (
+        <ShareModal
+          folderId={shareFolderId}
           onClose={handleCloseShareModal}
         />
       )}

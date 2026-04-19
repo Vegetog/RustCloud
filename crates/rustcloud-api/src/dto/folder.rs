@@ -59,3 +59,57 @@ pub struct FolderChildrenResponse {
     /// 文件列表由前端调用 /documents?folder_id= 获取
     pub total_folders: u64,
 }
+
+// ===== 文件夹快照（用于用户间分享前的重加密） =====
+
+/// 快照中的单个文件夹条目（owner 视角的加密名）
+#[derive(Debug, Serialize)]
+pub struct FolderSnapshotItem {
+    pub id: Uuid,
+    pub parent_id: Option<Uuid>,
+    /// 用 owner 公钥 RSA-OAEP 加密的文件夹名
+    pub encrypted_name: String,
+}
+
+/// 快照中的单个文档条目
+#[derive(Debug, Serialize)]
+pub struct DocumentSnapshotItem {
+    pub id: Uuid,
+    pub folder_id: Option<Uuid>,
+    /// 用 owner 公钥 RSA-OAEP 加密的 DEK
+    pub encrypted_key: String,
+}
+
+/// 文件夹快照响应（含完整子树）
+#[derive(Debug, Serialize)]
+pub struct FolderSnapshotResponse {
+    pub root_folder_id: Uuid,
+    pub folders: Vec<FolderSnapshotItem>,
+    pub documents: Vec<DocumentSnapshotItem>,
+}
+
+// ===== 文件夹分享请求 =====
+
+#[derive(Debug, Deserialize)]
+pub struct ShareFolderKeyEntry {
+    pub folder_id: Uuid,
+    /// 用目标用户公钥重加密的文件夹名
+    pub encrypted_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ShareDocumentKeyEntry {
+    pub document_id: Uuid,
+    /// 用目标用户公钥重加密的 DEK
+    pub encrypted_key: String,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct ShareFolderRequest {
+    #[validate(email(message = "Invalid email format"))]
+    pub target_email: String,
+    #[validate(length(min = 1))]
+    pub permission_level: String,
+    pub folder_keys: Vec<ShareFolderKeyEntry>,
+    pub document_keys: Vec<ShareDocumentKeyEntry>,
+}

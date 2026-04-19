@@ -29,6 +29,16 @@ pub trait DocumentKeyRepositoryTrait: Send + Sync {
 
     /// 根据 ID 删除密钥
     async fn delete(&self, id: Uuid) -> DbResult<()>;
+
+    /// 批量查询指定用户对一组文档的密钥（用于快照）
+    async fn find_by_user_and_documents(
+        &self,
+        user_id: Uuid,
+        doc_ids: Vec<Uuid>,
+    ) -> DbResult<Vec<DocumentKeyModel>>;
+
+    /// 不存在则创建，存在则更新（幂等授权）
+    async fn upsert(&self, data: CreateDocumentKey) -> DbResult<DocumentKeyModel>;
 }
 
 /// 文档密钥仓储实现
@@ -88,6 +98,35 @@ impl DocumentKeyRepositoryTrait for DocumentKeyRepository {
             return Err(DatabaseError::NotFound);
         }
         Ok(())
+    }
+
+    async fn find_by_user_and_documents(
+        &self,
+        user_id: Uuid,
+        doc_ids: Vec<Uuid>,
+    ) -> DbResult<Vec<DocumentKeyModel>> {
+        if doc_ids.is_empty() {
+            return Ok(vec![]);
+        }
+        Ok(DocumentKey::find()
+            .filter(document_key::Column::UserId.eq(user_id))
+            .filter(document_key::Column::DocumentId.is_in(doc_ids))
+            .all(&*self.db)
+            .await?)
+    }
+
+    async fn upsert(&self, data: CreateDocumentKey) -> DbResult<DocumentKeyModel> {
+        if let Some(existing) = self
+            .find_by_document_and_user(data.document_id, data.user_id)
+            .await?
+        {
+            let mut model: document_key::ActiveModel = existing.into();
+            model.encrypted_key = Set(data.encrypted_key);
+            model.permission_level = Set(data.permission_level);
+            Ok(model.update(&*self.db).await?)
+        } else {
+            self.create(data).await
+        }
     }
 }
 

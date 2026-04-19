@@ -39,6 +39,13 @@ pub trait DocumentRepositoryTrait: Send + Sync {
 
     /// 根据 ID 删除文档
     async fn delete(&self, id: Uuid) -> DbResult<()>;
+
+    /// 查询指定文件夹列表中所有属于 owner 的文档（用于快照）
+    async fn find_in_folders(
+        &self,
+        owner_id: Uuid,
+        folder_ids: Vec<Uuid>,
+    ) -> DbResult<Vec<DocumentModel>>;
 }
 
 /// 文档仓储实现
@@ -171,6 +178,21 @@ impl DocumentRepositoryTrait for DocumentRepository {
             return Err(DatabaseError::NotFound);
         }
         Ok(())
+    }
+
+    async fn find_in_folders(
+        &self,
+        owner_id: Uuid,
+        folder_ids: Vec<Uuid>,
+    ) -> DbResult<Vec<DocumentModel>> {
+        if folder_ids.is_empty() {
+            return Ok(vec![]);
+        }
+        Ok(Document::find()
+            .filter(document::Column::OwnerId.eq(owner_id))
+            .filter(document::Column::FolderId.is_in(folder_ids))
+            .all(&*self.db)
+            .await?)
     }
 }
 

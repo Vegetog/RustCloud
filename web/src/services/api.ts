@@ -14,6 +14,8 @@ import type {
   Folder,
   FolderListResponse,
   CreateFolderRequest,
+  FolderSnapshotResponse,
+  ShareFolderRequest,
 } from '../types/folder';
 import type {
   Identity,
@@ -294,6 +296,22 @@ class ApiService {
    */
   async deleteFolder(id: string) {
     return this.client.delete(`/folders/${id}`);
+  }
+
+  /**
+   * 获取文件夹子树快照（owner 专用，用于分享前批量重加密）
+   */
+  async getFolderSnapshot(folderId: string) {
+    return this.client.get<{ success: boolean; data: FolderSnapshotResponse }>(
+      `/folders/${folderId}/snapshot`
+    );
+  }
+
+  /**
+   * 用户间文件夹分享：提交已重加密的密钥集合
+   */
+  async shareFolder(folderId: string, data: ShareFolderRequest) {
+    return this.client.post(`/folders/${folderId}/share`, data);
   }
 
   // ===== 存储 API =====

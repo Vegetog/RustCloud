@@ -26,3 +26,46 @@ export interface CreateFolderRequest {
   encrypted_name: string;
   parent_id?: string;
 }
+
+// ===== 文件夹快照（分享前的重加密数据源） =====
+
+export interface FolderSnapshotItem {
+  id: string;
+  parent_id: string | null;
+  /** 用 owner 公钥 RSA-OAEP 加密的文件夹名 */
+  encrypted_name: string;
+}
+
+export interface DocumentSnapshotItem {
+  id: string;
+  folder_id: string | null;
+  /** 用 owner 公钥 RSA-OAEP 加密的 DEK */
+  encrypted_key: string;
+}
+
+export interface FolderSnapshotResponse {
+  root_folder_id: string;
+  folders: FolderSnapshotItem[];
+  documents: DocumentSnapshotItem[];
+}
+
+// ===== 文件夹分享请求 =====
+
+export interface ShareFolderKeyEntry {
+  folder_id: string;
+  /** 用目标用户公钥重加密的文件夹名 */
+  encrypted_name: string;
+}
+
+export interface ShareDocumentKeyEntry {
+  document_id: string;
+  /** 用目标用户公钥重加密的 DEK */
+  encrypted_key: string;
+}
+
+export interface ShareFolderRequest {
+  target_email: string;
+  permission_level: 'read' | 'write';
+  folder_keys: ShareFolderKeyEntry[];
+  document_keys: ShareDocumentKeyEntry[];
+}
