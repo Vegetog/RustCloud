@@ -76,6 +76,7 @@ export function DocumentsPage() {
   const {
     folders,
     currentFolder,
+    ancestors,
     loading: folderLoading,
     error: folderError,
     loadFolders,
@@ -372,16 +373,28 @@ export function DocumentsPage() {
           <div className="flex items-center text-sm font-medium text-slate-500 min-w-0">
             {/* 面包屑 */}
             {folderId ? (
-              <div className="flex items-center space-x-1 min-w-0">
+              <div className="flex items-center space-x-1 min-w-0 overflow-hidden">
                 <button
                   onClick={() => navigate('/documents')}
-                  className="text-blue-600 hover:text-blue-700 hover:underline whitespace-nowrap"
+                  className="text-blue-600 hover:text-blue-700 hover:underline whitespace-nowrap shrink-0"
                 >
                   全部文件
                 </button>
+                {ancestors.map((ancestor) => (
+                  <span key={ancestor.id} className="flex items-center space-x-1 shrink-0">
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <button
+                      onClick={() => navigate(`/documents/folder/${ancestor.id}`)}
+                      className="text-blue-600 hover:text-blue-700 hover:underline max-w-32 truncate"
+                      title={ancestor.decrypted_name}
+                    >
+                      {ancestor.decrypted_name || '…'}
+                    </button>
+                  </span>
+                ))}
                 <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="text-slate-800 truncate max-w-48">
-                  {currentFolder?.decrypted_name || '文件夹'}
+                <span className="text-slate-800 truncate max-w-48" title={currentFolder?.decrypted_name}>
+                  {currentFolder?.decrypted_name || '…'}
                 </span>
               </div>
             ) : (

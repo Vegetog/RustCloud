@@ -12,12 +12,14 @@ interface FolderState {
   folders: Folder[];
   // 当前所在文件夹（null = 根目录）
   currentFolder: Folder | null;
+  // 从根到当前文件夹的父级列表（不含 currentFolder 本身）
+  ancestors: Folder[];
   loading: boolean;
   error: string | null;
 
   // 加载指定父目录的子文件夹
   loadFolders: (parentId?: string | null) => Promise<void>;
-  // 加载当前文件夹详情（用于面包屑）
+  // 加载当前文件夹详情及完整祖先链（用于面包屑）
   loadCurrentFolder: (folderId: string) => Promise<void>;
   // 创建文件夹
   createFolder: (name: string, parentId?: string | null) => Promise<void>;
@@ -32,6 +34,7 @@ interface FolderState {
 export const useFolderStore = create<FolderState>((set, get) => ({
   folders: [],
   currentFolder: null,
+  ancestors: [],
   loading: false,
   error: null,
 
@@ -68,28 +71,46 @@ export const useFolderStore = create<FolderState>((set, get) => ({
   },
 
   loadCurrentFolder: async (folderId: string) => {
+    // 立即清空，避免显示旧数据
+    set({ currentFolder: null, ancestors: [] });
     try {
-      const response = await apiService.getFolderDetail(folderId);
-      const folder = response.data.data.folder;
-
       const privateKey = useAuthStore.getState().privateKey;
-      if (privateKey) {
-        const crypto = new CryptoService();
-        try {
-          const decrypted_name = await crypto.rsaDecryptFolderName(
-            folder.encrypted_name,
-            privateKey
-          );
-          set({ currentFolder: { ...folder, decrypted_name } });
-          return;
-        } catch {
-          // 解密失败则用原始名
+      const crypto = new CryptoService();
+
+      /** 获取单个文件夹并解密名称 */
+      const fetchAndDecrypt = async (id: string): Promise<Folder> => {
+        const response = await apiService.getFolderDetail(id);
+        const folder = response.data.data.folder;
+        if (privateKey) {
+          try {
+            const decrypted_name = await crypto.rsaDecryptFolderName(
+              folder.encrypted_name,
+              privateKey
+            );
+            return { ...folder, decrypted_name };
+          } catch {
+            // 解密失败，返回原始数据
+          }
         }
+        return folder;
+      };
+
+      // 获取当前文件夹
+      const current = await fetchAndDecrypt(folderId);
+
+      // 沿 parent_id 向上追溯，构建祖先链（从根到父级）
+      const ancestors: Folder[] = [];
+      let parentId = current.parent_id;
+      while (parentId) {
+        const ancestor = await fetchAndDecrypt(parentId);
+        ancestors.unshift(ancestor); // 前插保持根→父的顺序
+        parentId = ancestor.parent_id;
       }
-      set({ currentFolder: folder });
+
+      set({ currentFolder: current, ancestors });
     } catch (error) {
       console.error('Failed to load current folder:', error);
-      set({ currentFolder: null });
+      set({ currentFolder: null, ancestors: [] });
     }
   },
 
@@ -132,5 +153,5 @@ export const useFolderStore = create<FolderState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  reset: () => set({ folders: [], currentFolder: null, error: null }),
+  reset: () => set({ folders: [], currentFolder: null, ancestors: [], error: null }),
 }));
