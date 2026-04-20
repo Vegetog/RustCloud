@@ -280,7 +280,7 @@ class ApiService {
    * 获取文件夹详情
    */
   async getFolderDetail(id: string) {
-    return this.client.get<{ success: boolean; data: { folder: Folder } }>(
+    return this.client.get<{ success: boolean; data: Folder }>(
       `/folders/${id}`
     );
   }

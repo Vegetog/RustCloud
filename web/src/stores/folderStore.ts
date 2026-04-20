@@ -80,7 +80,7 @@ export const useFolderStore = create<FolderState>((set, get) => ({
       /** 获取单个文件夹并解密名称 */
       const fetchAndDecrypt = async (id: string): Promise<Folder> => {
         const response = await apiService.getFolderDetail(id);
-        const folder = response.data.data.folder;
+        const folder = response.data.data;
         if (privateKey) {
           try {
             const decrypted_name = await crypto.rsaDecryptFolderName(
