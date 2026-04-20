@@ -15,7 +15,9 @@ import {
   Folder,
   ChevronRight,
   ChevronDown,
+  Archive,
 } from 'lucide-react';
+import JSZip from 'jszip';
 import { apiService } from '../services/api';
 import { CryptoService } from '../services/crypto';
 import type { FolderShareManifest, ManifestDocumentItem, ManifestFolderItem } from '../types/folder';
@@ -281,6 +283,54 @@ function FolderShareView({ shareData, token }: { shareData: FolderShareData; tok
   const [tree, setTree] = useState<FolderNode[]>([]);
   const [buildError, setBuildError] = useState<string | null>(null);
   const [building, setBuilding] = useState(true);
+  const [zipProgress, setZipProgress] = useState<{ current: number; total: number } | null>(null);
+
+  const handleDownloadAll = async () => {
+    const allFiles = collectAllFiles(tree);
+    if (allFiles.length === 0) return;
+    const cryptoSvc = new CryptoService();
+    setZipProgress({ current: 0, total: allFiles.length });
+    const zip = new JSZip();
+    for (let i = 0; i < allFiles.length; i++) {
+      const { path, doc } = allFiles[i];
+      try {
+        // 1. RSA-OAEP 解密 DEK
+        const dekBuffer = await window.crypto.subtle.decrypt(
+          { name: 'RSA-OAEP' },
+          shareData.eskPrivKey,
+          cryptoSvc.base64ToArrayBuffer(doc.encrypted_key)
+        );
+        // 2. 导入 AES-GCM 密钥
+        const aesKey = await window.crypto.subtle.importKey(
+          'raw', dekBuffer, 'AES-GCM', false, ['decrypt']
+        );
+        // 3. 下载加密内容
+        const resp = await apiService.downloadFolderShareDocument(token, doc.id);
+        // 4. AES-GCM 解密内容
+        const decryptedContent = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: cryptoSvc.base64ToArrayBuffer(doc.content_nonce) },
+          aesKey,
+          resp.data as ArrayBuffer
+        );
+        zip.file(path, decryptedContent);
+      } catch (err) {
+        console.error(`Failed to process ${path}:`, err);
+      }
+      setZipProgress({ current: i + 1, total: allFiles.length });
+    }
+    // 生成 ZIP 并触发下载
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const rootName = tree[0]?.decryptedName ?? 'download';
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${rootName}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setZipProgress(null);
+  };
 
   // 构建解密后的文件夹树
   useEffect(() => {
@@ -373,6 +423,27 @@ function FolderShareView({ shareData, token }: { shareData: FolderShareData; tok
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">以下内容均在浏览器本地解密，服务器无法查看文件名和内容。</p>
+      {tree.length > 0 && !building && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleDownloadAll}
+            disabled={!!zipProgress}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {zipProgress ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>打包中… {zipProgress.current}/{zipProgress.total}</span>
+              </>
+            ) : (
+              <>
+                <Archive className="w-4 h-4" />
+                <span>下载全部 ZIP</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
       <div className="border border-slate-200 rounded-lg divide-y divide-slate-100">
         {tree.map((node) => (
           <FolderNodeView key={node.folder.id} node={node} token={token} eskPrivKey={shareData.eskPrivKey} />
@@ -520,6 +591,22 @@ function DocumentNodeView({
 }
 
 // ===== 工具函数 =====
+
+/** 递归遍历已解密的文件夹树，返回扁平的 [{path, doc}] 列表，path 保留层级结构 */
+function collectAllFiles(
+  nodes: FolderNode[],
+  parentPath = ''
+): { path: string; doc: ManifestDocumentItem & { decryptedName: string } }[] {
+  const result: { path: string; doc: ManifestDocumentItem & { decryptedName: string } }[] = [];
+  for (const node of nodes) {
+    const folderPath = parentPath ? `${parentPath}/${node.decryptedName}` : node.decryptedName;
+    for (const doc of node.documents) {
+      result.push({ path: `${folderPath}/${doc.decryptedName}`, doc });
+    }
+    result.push(...collectAllFiles(node.children, folderPath));
+  }
+  return result;
+}
 
 function triggerDownload(content: ArrayBuffer, fileName: string) {
   const blob = new Blob([content]);
