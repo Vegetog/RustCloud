@@ -42,6 +42,8 @@ import { ShareModal } from '../components/ShareModal';
 import { PreviewModal } from '../components/PreviewModal';
 import { DocumentEditorModal } from '../components/DocumentEditorModal';
 import { AISettingsModal } from '../components/AISettingsModal';
+import { SemanticSearchPanel } from '../rag/SemanticSearchPanel';
+import { rebuildAllIndexes, onDocumentDeleted } from '../rag/ragIntegration';
 import { apiService } from '../services/api';
 import { CryptoService } from '../services/crypto';
 import type { Document } from '../types/document';
@@ -100,6 +102,10 @@ export function DocumentsPage() {
   // 预览 / 编辑弹窗
   const [previewDocument, setPreviewDocument] = useState<DocumentWithEncryptedKey | null>(null);
   const [editingDocument, setEditingDocument] = useState<DocumentWithEncryptedKey | null>(null);
+
+  // 语义搜索面板
+  const [showRagSearch, setShowRagSearch] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
 
   // 新建文件夹弹窗
   const [newFolderOpen, setNewFolderOpen] = useState(false);
@@ -200,6 +206,39 @@ export function DocumentsPage() {
       mimeType === 'application/x-yaml' ||
       mimeType === 'application/xml'
     );
+  };
+
+  // 从语义搜索结果点击打开文档（只有 docId，需先 fetch 详情）
+  const handleOpenFromSearch = async (docId: string) => {
+    try {
+      const { privateKey } = useAuthStore.getState();
+      if (!privateKey) { alert('私钥未找到，请重新登录'); return; }
+
+      const response = await apiService.getDocumentDetail(docId);
+      const detail = response.data.data;
+      const doc = detail.document;
+      const crypto = new CryptoService();
+
+      const encryptedKeyBuffer = crypto.base64ToArrayBuffer(detail.encrypted_key);
+      const documentKeyBuffer = await window.crypto.subtle.decrypt(
+        { name: 'RSA-OAEP' }, privateKey, encryptedKeyBuffer
+      );
+      const documentKey = await window.crypto.subtle.importKey(
+        'raw', documentKeyBuffer, 'AES-GCM', false, ['decrypt']
+      );
+      const nameNonceBuffer = crypto.base64ToArrayBuffer(doc.name_nonce);
+      const decryptedNameBuffer = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: nameNonceBuffer },
+        documentKey,
+        crypto.base64ToArrayBuffer(doc.encrypted_name)
+      );
+      const decryptedName = new TextDecoder().decode(decryptedNameBuffer);
+      setShowRagSearch(false);
+      setEditingDocument({ ...doc, encrypted_key: detail.encrypted_key, decrypted_name: decryptedName });
+    } catch (err) {
+      console.error('Open from search error:', err);
+      alert('打开文档失败，请在文件列表中手动打开');
+    }
   };
 
   const handleEdit = async (doc: Document) => {
@@ -344,6 +383,29 @@ export function DocumentsPage() {
             <Sparkles className="w-5 h-5" />
             <span className="font-medium text-sm">AI 设置</span>
           </button>
+          <button
+            onClick={async () => {
+              if (rebuilding) return;
+              setRebuilding(true);
+              try {
+                await rebuildAllIndexes((cur, total, title) =>
+                  console.log(`[RAG] 索引进度 ${cur}/${total}: ${title}`)
+                );
+                alert('索引重建完成！');
+              } catch (e) {
+                alert('索引重建失败：' + (e instanceof Error ? e.message : String(e)));
+              } finally {
+                setRebuilding(false);
+              }
+            }}
+            disabled={rebuilding}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {rebuilding
+              ? <Loader2 className="w-5 h-5 animate-spin" />
+              : <Search className="w-5 h-5" />}
+            <span className="font-medium text-sm">{rebuilding ? '重建中...' : '重建搜索索引'}</span>
+          </button>
         </nav>
 
         <div className="p-4 border-t border-slate-800">
@@ -405,15 +467,25 @@ export function DocumentsPage() {
           </div>
 
           {/* 搜索框 */}
-          <div className="flex-1 max-w-lg mx-8 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="搜索文件..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-100 border-none rounded-lg py-2 pl-10 pr-4 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-            />
+          <div className="flex-1 max-w-lg mx-8 flex items-center gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="搜索文件..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-100 border-none rounded-lg py-2 pl-10 pr-4 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+              />
+            </div>
+            <button
+              onClick={() => setShowRagSearch(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors whitespace-nowrap"
+              title="语义搜索（AI）"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden md:inline">AI 搜索</span>
+            </button>
           </div>
 
           {/* 操作按钮组 */}
@@ -653,7 +725,12 @@ export function DocumentsPage() {
                                   <Share2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={async () => { if (window.confirm('确定要删除这个文件吗？')) await deleteDocument(doc.id); }}
+                                  onClick={async () => {
+  if (window.confirm('确定要删除这个文件吗？')) {
+    await deleteDocument(doc.id);
+    onDocumentDeleted(doc.id);
+  }
+}}
                                   className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors"
                                   title="删除"
                                 >
@@ -762,6 +839,35 @@ export function DocumentsPage() {
           onClose={() => setEditingDocument(null)}
           onSuccess={() => loadDocuments(1, folderId ?? null)}
         />
+      )}
+
+      {/* 语义搜索侧边面板 */}
+      {showRagSearch && (
+        <div className="fixed inset-0 z-40 flex">
+          {/* 遮罩 */}
+          <div
+            className="flex-1 bg-black/30 backdrop-blur-sm"
+            onClick={() => setShowRagSearch(false)}
+          />
+          {/* 面板 */}
+          <div className="w-full max-w-md bg-white shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-500" />
+                <span className="font-semibold text-slate-800">语义搜索</span>
+              </div>
+              <button
+                onClick={() => setShowRagSearch(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <SemanticSearchPanel onDocumentClick={handleOpenFromSearch} />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* AI 设置弹窗 */}

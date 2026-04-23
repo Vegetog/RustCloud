@@ -10,6 +10,7 @@ import type { CollaboratorInfo } from '../services/yjsWsProvider';
 import { EncryptedYjsWsProvider, generateUserColor } from '../services/yjsWsProvider';
 import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
+import { onDocumentSaved as ragOnDocumentSaved } from '../rag/ragIntegration';
 
 interface DocumentEditorModalProps {
   documentId: string;
@@ -34,7 +35,7 @@ export function DocumentEditorModal({
   onClose,
   onSuccess,
 }: DocumentEditorModalProps) {
-  const { privateKey, user } = useAuthStore();
+  const { privateKey, masterKey, user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -271,6 +272,11 @@ export function DocumentEditorModal({
         storage_path: newStoragePath,
         size: blob.size,
       });
+
+      // 触发 RAG 索引（防抖 30s，fire-and-forget，不阻塞保存）
+      if (masterKey) {
+        ragOnDocumentSaved(documentId, fileName, currentText, masterKey);
+      }
 
       onSuccess();
       onClose();
