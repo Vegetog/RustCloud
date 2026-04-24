@@ -32,9 +32,6 @@ pub struct Model {
     /// 文件夹分享清单 JSON（含子树所有项目的密文元数据）
     pub manifest: Option<String>,
 
-    /// 可选密码哈希（Argon2）
-    pub password_hash: Option<String>,
-
     /// 可选过期时间戳
     pub expires_at: Option<DateTimeUtc>,
 

@@ -487,7 +487,6 @@ mod tests {
             encrypted_key: "enc_key".to_string(),
             ephemeral_pubkey: None,
             manifest: None,
-            password_hash: None,
             expires_at,
             max_access_count,
             access_count,

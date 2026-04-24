@@ -13,6 +13,7 @@ mod m20260418_000001_create_folders_table;
 mod m20260418_000002_create_folder_keys_table;
 mod m20260418_000003_add_folder_id_to_documents;
 mod m20260418_000004_extend_share_links_for_folders;
+mod m20260424_000001_drop_share_link_password_hash;
 
 pub struct Migrator;
 
@@ -33,6 +34,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260418_000002_create_folder_keys_table::Migration),
             Box::new(m20260418_000003_add_folder_id_to_documents::Migration),
             Box::new(m20260418_000004_extend_share_links_for_folders::Migration),
+            Box::new(m20260424_000001_drop_share_link_password_hash::Migration),
         ]
     }
 }
