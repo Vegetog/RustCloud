@@ -1,0 +1,59 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif", "fontSize": "20px"}, "flowchart": {"htmlLabels": true, "nodeSpacing": 60, "rankSpacing": 80}, "sequence": {"actorFontSize": 18, "messageFontSize": 18, "noteFontSize": 18}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; font-size: 20px !important; } .edgeLabel text, .edgeLabel span, .messageText, .actor { font-size: 18px !important; } .node rect, .node polygon, .node circle, .node ellipse { stroke-width: 2px !important; } .flowchart-link, .messageLine0, .messageLine1 { stroke-width: 2.4px !important; }"}}%%
+erDiagram
+    users ||--o{ document_keys : receives
+    users ||--o{ folder_keys : receives
+    users ||--o{ share_links : creates
+    documents ||--o{ document_keys : has
+    folders ||--o{ folder_keys : has
+    documents ||--o{ share_links : shared_by
+    folders ||--o{ share_links : shared_by
+
+    users {
+        uuid id PK
+        string email UK
+        string public_key
+    }
+
+    documents {
+        uuid id PK
+        uuid owner_id FK
+        string encrypted_name
+        string storage_path
+    }
+
+    folders {
+        uuid id PK
+        uuid owner_id FK
+        uuid parent_id FK
+        string encrypted_name
+    }
+
+    document_keys {
+        uuid id PK
+        uuid document_id FK
+        uuid user_id FK
+        string encrypted_key
+        smallint permission_level
+    }
+
+    folder_keys {
+        uuid id PK
+        uuid folder_id FK
+        uuid user_id FK
+        string encrypted_name
+        smallint permission_level
+    }
+
+    share_links {
+        uuid id PK
+        smallint target_type
+        uuid document_id FK
+        uuid folder_id FK
+        uuid creator_id FK
+        string access_token UK
+        string encrypted_key
+        string ephemeral_pubkey
+        json manifest
+        datetime expires_at
+    }
+

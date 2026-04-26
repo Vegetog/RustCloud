@@ -1,0 +1,84 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif"}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; }"}}%%
+erDiagram
+    users ||--o{ documents : owns
+    users ||--o{ folders : owns
+    users ||--o{ document_keys : receives
+    users ||--o{ folder_keys : receives
+    users ||--o{ share_links : creates
+    folders ||--o{ folders : contains
+    folders ||--o{ documents : contains
+    folders ||--o{ folder_keys : has
+    folders ||--o{ share_links : shared_by
+    documents ||--o{ document_keys : has
+    documents ||--o{ share_links : shared_by
+
+    users {
+        uuid id PK
+        string email UK
+        string password_hash
+        string salt
+        string public_key
+        string encrypted_private_key
+        string private_key_nonce
+        datetime created_at
+        datetime updated_at
+    }
+
+    documents {
+        uuid id PK
+        uuid owner_id FK
+        uuid folder_id FK
+        string encrypted_name
+        string name_nonce
+        string content_nonce
+        string storage_path
+        bigint size
+        string mime_type
+        bigint version
+        datetime created_at
+        datetime updated_at
+    }
+
+    document_keys {
+        uuid id PK
+        uuid document_id FK
+        uuid user_id FK
+        string encrypted_key
+        smallint permission_level
+        datetime created_at
+    }
+
+    folders {
+        uuid id PK
+        uuid owner_id FK
+        uuid parent_id FK
+        string encrypted_name
+        datetime created_at
+        datetime updated_at
+    }
+
+    folder_keys {
+        uuid id PK
+        uuid folder_id FK
+        uuid user_id FK
+        string encrypted_name
+        smallint permission_level
+        datetime created_at
+    }
+
+    share_links {
+        uuid id PK
+        smallint target_type
+        uuid document_id FK
+        uuid folder_id FK
+        uuid creator_id FK
+        string access_token UK
+        string encrypted_key
+        string ephemeral_pubkey
+        json manifest
+        datetime expires_at
+        int max_access_count
+        int access_count
+        datetime created_at
+    }
+

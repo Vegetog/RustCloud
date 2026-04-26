@@ -1,0 +1,22 @@
+{
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif",
+    "fontSize": "20px",
+    "primaryTextColor": "#0f172a",
+    "lineColor": "#111827",
+    "primaryBorderColor": "#1f2937"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "nodeSpacing": 60,
+    "rankSpacing": 80,
+    "curve": "basis"
+  },
+  "sequence": {
+    "actorFontSize": 18,
+    "messageFontSize": 18,
+    "noteFontSize": 18
+  },
+  "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; font-size: 20px !important; } .edgeLabel text, .edgeLabel span { font-size: 18px !important; } .messageText, .actor { font-size: 18px !important; } .node rect, .node polygon, .node circle, .node ellipse { stroke-width: 2px !important; } .flowchart-link, .messageLine0, .messageLine1 { stroke-width: 2.4px !important; }"
+}

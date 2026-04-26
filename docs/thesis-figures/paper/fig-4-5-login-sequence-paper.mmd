@@ -1,0 +1,22 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif", "fontSize": "20px"}, "flowchart": {"htmlLabels": true, "nodeSpacing": 60, "rankSpacing": 80}, "sequence": {"actorFontSize": 18, "messageFontSize": 18, "noteFontSize": 18}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; font-size: 20px !important; } .edgeLabel text, .edgeLabel span, .messageText, .actor { font-size: 18px !important; } .node rect, .node polygon, .node circle, .node ellipse { stroke-width: 2px !important; } .flowchart-link, .messageLine0, .messageLine1 { stroke-width: 2.4px !important; }"}}%%
+sequenceDiagram
+    autonumber
+    actor U as 用户
+    participant FE as 前端浏览器
+    participant API as rustcloud-api
+    participant DB as PostgreSQL
+    participant R as Redis
+    participant WC as Web Crypto API
+
+    U->>FE: 输入邮箱与口令
+    FE->>API: POST /api/v1/auth/login<br/>email, password
+    API->>DB: 按 email 查询用户
+    DB-->>API: password_hash, salt, public_key, encrypted_private_key, nonce
+    API->>API: Argon2id 验证口令
+    API->>R: 记录 access/refresh token 会话
+    API-->>FE: JWT, salt, public_key, encrypted_private_key, nonce
+    FE->>WC: PBKDF2(password, salt) 重新派生 KEK
+    FE->>WC: AES-GCM 解密 encrypted_private_key
+    WC-->>FE: RSA 私钥明文 CryptoKey
+    FE->>FE: 进入已登录状态，后续解密在浏览器端完成
+

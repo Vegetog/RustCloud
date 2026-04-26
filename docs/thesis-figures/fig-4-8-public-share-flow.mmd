@@ -1,0 +1,29 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif"}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; }"}}%%
+sequenceDiagram
+    autonumber
+    actor Owner as 分享者浏览器
+    participant WC as Web Crypto API
+    participant API as rustcloud-api
+    participant DB as PostgreSQL
+    actor Guest as 访问者浏览器
+
+    Owner->>WC: 生成一次性 RSA 密钥对
+    WC-->>Owner: ephemeral_pubkey / ephemeral_privkey
+    Owner->>API: GET /api/v1/folders/:id/snapshot
+    API->>DB: 查询文件夹子树、文档密钥密文
+    DB-->>API: snapshot
+    API-->>Owner: 密文 snapshot
+    Owner->>Owner: 用自身 RSA 私钥解出各文档 DEK
+    Owner->>WC: 用 ephemeral_pubkey 重包 DEK 与敏感元信息
+    Owner->>API: POST /api/v1/folders/:id/share<br/>ephemeral_pubkey + manifest
+    API->>DB: 保存 share_links
+    API-->>Owner: access_token
+    Owner-->>Guest: /share/{token}#esk={ephemeral_privkey}
+    Guest->>API: GET /api/v1/shares/access/{token}<br/>浏览器不会发送 #esk
+    API->>DB: 查询 share_links
+    DB-->>API: ephemeral_pubkey + manifest
+    API-->>Guest: 密文 manifest
+    Guest->>Guest: 从 URL fragment 读取 ephemeral_privkey
+    Guest->>WC: RSA-OAEP 解包 manifest 中的 DEK
+    Guest->>WC: AES-GCM 解密文件名与文件内容
+

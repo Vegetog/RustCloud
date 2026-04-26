@@ -1,0 +1,29 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif"}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; }"}}%%
+flowchart TB
+    password["用户口令<br/>仅用户输入时出现"]
+    salt["PBKDF2 salt<br/>后端可保存"]
+    kek["KEK<br/>PBKDF2-HMAC-SHA-256 派生<br/>仅浏览器内存"]
+    rsa_priv["RSA 私钥明文<br/>仅浏览器内存"]
+    rsa_pub["RSA 公钥<br/>后端可保存"]
+    enc_priv["encrypted_private_key<br/>AES-GCM(私钥, KEK)<br/>后端保存"]
+    dek["DEK<br/>每个文件随机 256 bit<br/>仅浏览器内存"]
+    enc_dek["encrypted_key<br/>RSA-OAEP(DEK, 用户公钥)<br/>后端 document_keys 保存"]
+    plaintext["文件明文 / 文件名明文<br/>仅浏览器端"]
+    ciphertext["文件密文 / 加密文件名<br/>AES-GCM(明文, DEK)<br/>数据库 + MinIO 保存"]
+
+password -->|"PBKDF2"| kek
+salt -->|"参与派生"| kek
+kek -->|"AES-GCM 解密"| rsa_priv
+rsa_priv -.->|"密文形态持久化"| enc_priv
+rsa_pub -->|"RSA-OAEP 包装"| enc_dek
+rsa_priv -->|"RSA-OAEP 解包"| dek
+dek -->|"AES-GCM 加密"| ciphertext
+plaintext -->|"上传前加密"| ciphertext
+enc_dek -->|"下载时取回"| dek
+ciphertext -->|"下载后解密"| plaintext
+
+classDef local fill:#e8f4ff,stroke:#2563eb,color:#0f172a;
+classDef server fill:#fff7ed,stroke:#ea580c,color:#0f172a;
+class password,kek,rsa_priv,dek,plaintext local;
+class salt,rsa_pub,enc_priv,enc_dek,ciphertext server;
+

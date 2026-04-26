@@ -1,0 +1,18 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif", "fontSize": "20px"}, "flowchart": {"htmlLabels": true, "nodeSpacing": 60, "rankSpacing": 80}, "sequence": {"actorFontSize": 18, "messageFontSize": 18, "noteFontSize": 18}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; font-size: 20px !important; } .edgeLabel text, .edgeLabel span, .messageText, .actor { font-size: 18px !important; } .node rect, .node polygon, .node circle, .node ellipse { stroke-width: 2px !important; } .flowchart-link, .messageLine0, .messageLine1 { stroke-width: 2.4px !important; }"}}%%
+flowchart LR
+    password["用户口令<br/>仅用户输入时出现"]
+    salt["PBKDF2 salt<br/>后端保存"]
+    kek["KEK<br/>浏览器端派生"]
+    rsa_priv["RSA 私钥明文<br/>仅浏览器内存"]
+    enc_priv["encrypted_private_key<br/>后端保存"]
+
+    password -->|"PBKDF2-HMAC-SHA-256"| kek
+    salt -->|"参与派生"| kek
+    kek -->|"AES-GCM 解密"| rsa_priv
+    rsa_priv -.->|"AES-GCM 加密后持久化"| enc_priv
+
+    classDef local fill:#e8f4ff,stroke:#2563eb,color:#0f172a;
+    classDef server fill:#fff7ed,stroke:#ea580c,color:#0f172a;
+    class password,kek,rsa_priv local;
+    class salt,enc_priv server;
+

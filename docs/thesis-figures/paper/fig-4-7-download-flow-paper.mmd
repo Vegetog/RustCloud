@@ -1,0 +1,24 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif", "fontSize": "20px"}, "flowchart": {"htmlLabels": true, "nodeSpacing": 60, "rankSpacing": 80}, "sequence": {"actorFontSize": 18, "messageFontSize": 18, "noteFontSize": 18}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; font-size: 20px !important; } .edgeLabel text, .edgeLabel span, .messageText, .actor { font-size: 18px !important; } .node rect, .node polygon, .node circle, .node ellipse { stroke-width: 2px !important; } .flowchart-link, .messageLine0, .messageLine1 { stroke-width: 2.4px !important; }"}}%%
+flowchart LR
+    req["用户点击下载"]
+    meta["GET /api/v1/documents/:id<br/>获取元信息与 encrypted_key"]
+    content["GET /api/v1/documents/:id/download<br/>获取文件密文"]
+    unwrap["浏览器使用 RSA 私钥<br/>RSA-OAEP 解出 DEK"]
+    decrypt_name["AES-GCM 解密文件名"]
+    decrypt_content["AES-GCM 解密文件内容"]
+    output["浏览器生成明文文件<br/>提供保存或预览"]
+
+    req --> meta
+    req --> content
+    meta --> unwrap
+    meta --> decrypt_name
+    content --> decrypt_content
+    unwrap --> decrypt_content
+    decrypt_name --> output
+    decrypt_content --> output
+
+    classDef server fill:#fff7ed,stroke:#ea580c,color:#0f172a;
+    classDef local fill:#e8f4ff,stroke:#2563eb,color:#0f172a;
+    class meta,content server;
+    class req,unwrap,decrypt_name,decrypt_content,output local;
+

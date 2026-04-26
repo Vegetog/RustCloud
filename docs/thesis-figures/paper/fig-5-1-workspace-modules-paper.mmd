@@ -1,0 +1,26 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif", "fontSize": "20px"}, "flowchart": {"htmlLabels": true, "nodeSpacing": 60, "rankSpacing": 80}, "sequence": {"actorFontSize": 18, "messageFontSize": 18, "noteFontSize": 18}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; font-size: 20px !important; } .edgeLabel text, .edgeLabel span, .messageText, .actor { font-size: 18px !important; } .node rect, .node polygon, .node circle, .node ellipse { stroke-width: 2px !important; } .flowchart-link, .messageLine0, .messageLine1 { stroke-width: 2.4px !important; }"}}%%
+flowchart TB
+    api["rustcloud-api<br/>Axum 路由、DTO、Handler、WebSocket"]
+    auth["rustcloud-auth<br/>JWT、Token family、会话状态"]
+    crypto["rustcloud-crypto<br/>Argon2id、SHA-256"]
+    storage["rustcloud-storage<br/>Storage trait、LocalStorage、MinioStorage"]
+    db["rustcloud-database<br/>SeaORM 实体、Repository、Migration"]
+    core["rustcloud-core<br/>配置、错误类型、通用工具"]
+    web["web<br/>React、TypeScript、Web Crypto API"]
+
+    web -->|"HTTP / WebSocket"| api
+    api --> auth
+    api --> crypto
+    api --> storage
+    api --> db
+    api --> core
+    auth --> core
+    crypto --> core
+    storage --> core
+    db --> core
+
+    classDef entry fill:#e8f4ff,stroke:#2563eb,color:#0f172a;
+    classDef crate fill:#ecfdf3,stroke:#16a34a,color:#0f172a;
+    class web,api entry;
+    class auth,crypto,storage,db,core crate;
+

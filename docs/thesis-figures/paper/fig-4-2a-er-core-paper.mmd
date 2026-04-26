@@ -1,0 +1,13 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif", "fontSize": "20px"}, "flowchart": {"htmlLabels": true, "nodeSpacing": 70, "rankSpacing": 90}, "themeCSS": "text, .nodeLabel, .edgeLabel, .label { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; font-size: 20px !important; } .edgeLabel span { font-size: 18px !important; } .node rect { stroke-width: 2px !important; } .flowchart-link { stroke-width: 2.4px !important; }"}}%%
+flowchart LR
+    users["<b>users</b><br/>id PK<br/>email UK<br/>password_hash<br/>salt<br/>public_key<br/>encrypted_private_key<br/>private_key_nonce"]
+    folders["<b>folders</b><br/>id PK<br/>owner_id FK<br/>parent_id FK<br/>encrypted_name<br/>created_at<br/>updated_at"]
+    documents["<b>documents</b><br/>id PK<br/>owner_id FK<br/>folder_id FK<br/>encrypted_name<br/>name_nonce<br/>content_nonce<br/>storage_path<br/>size / mime_type / version"]
+
+    users -->|"1:N owns"| folders
+    users -->|"1:N owns"| documents
+    folders -->|"parent_id<br/>folder tree"| folders
+    folders -->|"1:N contains"| documents
+
+    classDef entity fill:#fff7ed,stroke:#1f2937,color:#0f172a;
+    class users,folders,documents entity;
