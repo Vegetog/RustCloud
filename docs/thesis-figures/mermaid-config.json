@@ -1,7 +1,0 @@
-{
-  "theme": "base",
-  "themeVariables": {
-    "fontFamily": "\"Times New Roman\", SimSun, \"Songti SC\", STSong, serif"
-  },
-  "themeCSS": "text, .nodeLabel, .edgeLabel, .label, .actor, .messageText, .loopText, .noteText, .titleText { font-family: \"Times New Roman\", SimSun, \"Songti SC\", STSong, serif !important; }"
-}

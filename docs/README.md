@@ -14,9 +14,9 @@
 - `crypto`：后端当前仅 `hash_password/verify_password/sha256`
 - `auth`：JWT、refresh rotation、Redis 会话
 - `storage`：Local/MinIO 存储实现
-- `database`：SeaORM 实体与仓库
-- `api`：认证/文档/分享/锁接口
-- `web`：React + Web Crypto 客户端加密
+- `database`：SeaORM 实体与仓库（users/documents/document_keys/share_links/folders/folder_keys/identities/identity_users）
+- `api`：认证/文档/文件夹/身份组/分享/存储上传/WebSocket 协作编辑
+- `web`：React + Web Crypto 客户端加密 + Yjs 协作编辑 + 多格式文件预览 + 客户端 AI 摘要
 
 ## 关键数据流
 
@@ -25,6 +25,8 @@
 3. 上传：前端生成 DEK，加密内容后上传密文和 `encrypted_key`。
 4. 下载：后端返回密文，前端使用私钥解 DEK 再解密内容。
 5. 分享：前端进行 DEK 重加密，后端只存/转发 `encrypted_key`。
+6. 协作编辑：前端通过 WebSocket 传输 AES-GCM 加密的 Yjs 增量，服务端只中继密文。
+7. 文件夹：前端管理目录树，文件夹密钥与文档密钥同样端到端加密。
 
 ## 子文档
 
